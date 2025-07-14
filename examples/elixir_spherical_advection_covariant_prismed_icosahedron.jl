@@ -1,8 +1,11 @@
 ###############################################################################
 # DGSEM for the linear advection equation on a prismed icosahedral grid
 ###############################################################################
+<<<<<<< HEAD
 # To run a convergence test, use
 # convergence_test("../examples/elixir_spherical_advection_covariant_prismed_icosahedron.jl", 4, initial_refinement_level = 1)
+=======
+>>>>>>> b5deffc (Implemented covariant advection in DGMulti and added Icosahedron Mesh)
 
 using OrdinaryDiffEq, Trixi, TrixiAtmo
 
@@ -16,6 +19,7 @@ equations = CovariantLinearAdvectionEquation2D(global_coordinate_system = Global
 ###############################################################################
 # Build DG solver.
 
+<<<<<<< HEAD
 tensor_polydeg = 2
 
 dg = DGMulti(element_type = Tri(),
@@ -31,6 +35,22 @@ initial_refinement_level = 4
 
 mesh = DGMultiMeshTriIcosahedron2D(dg;
     initial_refinement = initial_refinement_level)
+=======
+tensor_polydeg = (2, 1)
+
+dg = DGMulti(element_type = Wedge(),
+             approximation_type = Polynomial(),
+             surface_flux = flux_central,
+             polydeg = tensor_polydeg)
+
+###############################################################################
+# Build mesh.
+
+mesh = DGMultiMeshPrismIcosahedron(dg;
+    inner_radius = 0.999 * EARTH_RADIUS,
+    outer_radius = EARTH_RADIUS,
+    initial_refinement = 3)
+>>>>>>> b5deffc (Implemented covariant advection in DGMulti and added Icosahedron Mesh)
 
 # Transform the initial condition to the proper set of conservative variables
 initial_condition_transformed = transform_initial_condition(initial_condition, equations)
@@ -56,7 +76,11 @@ analysis_callback = AnalysisCallback(semi, interval = 10,
                                      uEltype = real(dg))
 
 # The SaveSolutionCallback allows to save the solution to a file in regular intervals
+<<<<<<< HEAD
 save_solution = SaveSolutionCallback(interval = 100,
+=======
+save_solution = SaveSolutionCallback(interval = 10,
+>>>>>>> b5deffc (Implemented covariant advection in DGMulti and added Icosahedron Mesh)
                                      solution_variables = contravariant2global)
 
 # The StepsizeCallback handles the re-calculation of the maximum Δt after each time step
@@ -73,4 +97,8 @@ callbacks = CallbackSet(summary_callback, analysis_callback, save_solution,
 # OrdinaryDiffEq's `solve` method evolves the solution in time and executes the passed 
 # callbacks
 sol = solve(ode, CarpenterKennedy2N54(williamson_condition = false),
+<<<<<<< HEAD
             dt = 1.0 , save_everystep = false, callback = callbacks)
+=======
+            dt = 1.0, save_everystep = true, callback = callbacks)
+>>>>>>> b5deffc (Implemented covariant advection in DGMulti and added Icosahedron Mesh)

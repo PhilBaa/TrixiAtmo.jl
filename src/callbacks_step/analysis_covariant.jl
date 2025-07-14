@@ -150,8 +150,13 @@ end
 
 # L2 and Linf error calculation for the covariant form
 function Trixi.calc_error_norms(func, u, t, analyzer,
+<<<<<<< HEAD
                                 mesh::DGMultiMesh{NDIMS_AMBIENT}, equations::AbstractCovariantEquations, initial_condition,
                                 dg::DGMulti{NDIMS}, cache, cache_analysis) where {NDIMS, NDIMS_AMBIENT}
+=======
+                                mesh::DGMultiMesh{NDIMS}, equations::AbstractCovariantEquations, initial_condition,
+                                dg::DGMulti{NDIMS}, cache, cache_analysis) where {NDIMS}
+>>>>>>> b5deffc (Implemented covariant advection in DGMulti and added Icosahedron Mesh)
     rd = dg.basis
     md = mesh.md
     @unpack u_values, aux_quad_values = cache

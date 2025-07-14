@@ -47,6 +47,7 @@ function convert_variables(u, solution_variables, mesh::DGMultiMesh,
     
     # Loop over all nodes and convert variables, passing in auxiliary variables
     for i in Trixi.each_dof_global(mesh, dg)
+<<<<<<< HEAD
         if applicable(solution_variables, u, mesh, equations, dg, cache, i)
             data[i] = solution_variables(u, mesh, equations, dg, cache, i)
         else
@@ -54,6 +55,11 @@ function convert_variables(u, solution_variables, mesh::DGMultiMesh,
             aux_node = aux_values[i]
             data[i] = solution_variables(u_node, aux_node, equations)
         end
+=======
+        u_node = u[:, i]
+        aux_node = aux_values[i]
+        data[i] = solution_variables(u_node, aux_node, equations)
+>>>>>>> b5deffc (Implemented covariant advection in DGMulti and added Icosahedron Mesh)
     end
     return data
 end

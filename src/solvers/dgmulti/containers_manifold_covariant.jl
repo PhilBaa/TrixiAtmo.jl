@@ -1,9 +1,15 @@
 @muladd begin
 #! format: noindnent
 
+<<<<<<< HEAD
 function init_auxiliary_node_variables!(aux_values, aux_quad_values, aux_face_values, mesh::DGMultiMesh,
                                         equations::AbstractCovariantEquations{2, 3},
                                         dg::DGMulti{<:Any, <:Tri},
+=======
+function init_auxiliary_node_variables!(aux_values, mesh::DGMultiMesh,
+                                        equations::AbstractCovariantEquations{2, 3},
+                                        dg::DGMulti{<:Any, <:Wedge},
+>>>>>>> b5deffc (Implemented covariant advection in DGMulti and added Icosahedron Mesh)
                                         bottom_topography)
     rd = dg.basis
     (; V1) = rd
@@ -15,13 +21,21 @@ function init_auxiliary_node_variables!(aux_values, aux_quad_values, aux_face_va
     # throughout the computation. We assume that each Wedge element's last three corner vertices lie
     # on the simulated sphere.
     VX, VY, VZ = map(coords -> transpose(coords[:, 1]) / V1', xyz)
+<<<<<<< HEAD
     v_outer = getindex.([VX, VY, VZ], 1)
+=======
+    v_outer = getindex.([VX, VY, VZ], 4)
+>>>>>>> b5deffc (Implemented covariant advection in DGMulti and added Icosahedron Mesh)
     radius = norm(v_outer)
 
     for element in eachelement(mesh, dg)
         # Compute corner vertices of the element
         VX, VY, VZ = map(coords -> transpose(coords[:, element]) / V1', xyz)
+<<<<<<< HEAD
         v1, v2, v3 = map(i -> getindex.([VX, VY, VZ], i), 1:3) #TODO: make nicer
+=======
+        v1, v2, v3 = map(i -> getindex.([VX, VY, VZ], i), 4:6)
+>>>>>>> b5deffc (Implemented covariant advection in DGMulti and added Icosahedron Mesh)
 
         aux_node = Vector{eltype(aux_values[1, 1])}(undef, n_aux)
         
@@ -52,6 +66,7 @@ function init_auxiliary_node_variables!(aux_values, aux_quad_values, aux_face_va
 
             # Covariant metric tensor components
             aux_node[14:16] = SVector(metric_covariant[1, 1],
+<<<<<<< HEAD
                                       metric_covariant[1, 2],
                                       metric_covariant[2, 2])
 
@@ -162,6 +177,24 @@ function init_auxiliary_node_variables!(aux_values, aux_quad_values, aux_face_va
             end
             aux_face_values[i, element] = SVector{n_aux}(aux_node)
         end
+=======
+                                                          metric_covariant[1, 2],
+                                                          metric_covariant[2, 2])
+
+            # Contravariant metric tensor components
+            aux_node[17:19] = SVector(metric_contravariant[1, 1],
+                                                          metric_contravariant[1, 2],
+                                                          metric_contravariant[2, 2])
+            # Bottom topography
+            if !isnothing(bottom_topography)
+                nothing
+            end
+            aux_values[i, element] = SVector{n_aux}(aux_node)
+        end
+        # TODO: implement Christoffel symbols
+        # Christoffel symbols of the second kind (aux_values[21:26, :, :, element])
+        # calc_christoffel_symbols!(aux_values, mesh, equations, dg, element)
+>>>>>>> b5deffc (Implemented covariant advection in DGMulti and added Icosahedron Mesh)
     end
 
     return nothing
@@ -190,6 +223,7 @@ end
     return SMatrix{3, 2}(dxdxi1[1], dxdxi1[2], dxdxi1[3],
                          dxdxi2[1], dxdxi2[2], dxdxi2[3])
 end
+<<<<<<< HEAD
 
 function calc_christoffel_symbols!(aux_values, mesh::DGMultiMesh,
                                    equations::AbstractCovariantEquations{2, 3}, dg,
@@ -254,4 +288,6 @@ function calc_christoffel_symbols!(aux_values, mesh::DGMultiMesh,
         aux_values[i, element] = SVector{n_aux_node_vars(equations)}(aux_node)
     end
 end
+=======
+>>>>>>> b5deffc (Implemented covariant advection in DGMulti and added Icosahedron Mesh)
 end # @muladd
