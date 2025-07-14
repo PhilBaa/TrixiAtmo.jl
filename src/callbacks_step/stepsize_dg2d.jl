@@ -69,4 +69,48 @@ function Trixi.max_dt(u, t, mesh::P4estMesh{2}, constant_speed::False,
     end
     return 2 / (nnodes(dg) * max_scaled_speed)
 end
+
+function Trixi.max_dt(u, t, mesh::DGMultiMesh,
+                constant_speed::False, equations::AbstractCovariantEquations{NDIMS},
+                dg::DGMulti, cache) where {NDIMS}
+    @unpack md = mesh
+    rd = dg.basis
+    (; aux_values) = cache
+
+    dt_min = Inf
+    for e in eachelement(mesh, dg, cache)
+        h_e = estimate_h_horizontal(e, rd, md)
+        max_speeds = ntuple(_ -> nextfloat(zero(t)), NDIMS)
+        for i in 1:nnodes(dg)
+            u_node = u[i, e]
+            aux_node = aux_values[i, e]
+            lambda_i = max_abs_speeds(u_node, aux_node, equations)
+            max_speeds = max.(max_speeds, lambda_i)
+        end
+        dt_min = min(dt_min, h_e / sum(max_speeds))
+    end
+
+    # This mimics `max_dt` for `TreeMesh`, except that `nnodes(dg)` is replaced by
+    # `polydeg+1`. This is because `nnodes(dg)` returns the total number of
+    # multi-dimensional nodes for DGMulti solver types, while `nnodes(dg)` returns
+    # the number of 1D nodes for `DGSEM` solvers.
+    return 0.001
+    return 2 * dt_min * Trixi.dt_polydeg_scaling(dg)
+end
+
+function estimate_h_horizontal(e, rd::RefElemData{3, <:Wedge}, md::MeshData)
+    (; node_ids_by_face ) = rd.element_type
+    node1 = SVector(ntuple(n -> md.xyz[n][1], 3))
+    node2 = SVector(ntuple(n -> md.xyz[n][2], 3))
+    side_length = norm(node1 - node2)
+    Jf_e = view(md.Jf, :, e)
+    Jf_face= Inf
+    for f in 4:5
+        Jf_face = min(Jf_face, minimum(view(Jf_e, node_ids_by_face[f])) / StartUpDG.face_scaling(rd, f))
+    end
+    h_e = Jf_face / side_length
+    return h_e
+end
+
+
 end # @muladd
