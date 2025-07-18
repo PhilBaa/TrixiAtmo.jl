@@ -47,7 +47,8 @@ include("callbacks_step/callbacks_step.jl")
 
 export CompressibleMoistEulerEquations2D, ShallowWaterEquations3D,
        CovariantLinearAdvectionEquation2D, CovariantShallowWaterEquations2D,
-       SplitCovariantShallowWaterEquations2D
+       SplitCovariantShallowWaterEquations2D,
+       CovariantFlatAdvectionEquation2D
 
 export GlobalCartesianCoordinates, GlobalSphericalCoordinates
 
@@ -73,7 +74,8 @@ export transform_initial_condition
 export initial_condition_gaussian, initial_condition_geostrophic_balance,
        initial_condition_rossby_haurwitz, initial_condition_isolated_mountain,
        initial_condition_unsteady_solid_body_rotation,
-       initial_condition_barotropic_instability
+       initial_condition_barotropic_instability,
+       initial_condition_flat
 
 export bottom_topography_isolated_mountain, bottom_topography_unsteady_solid_body_rotation
 

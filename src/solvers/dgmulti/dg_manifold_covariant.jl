@@ -19,7 +19,7 @@ function Trixi.compute_coefficients!(u, initial_condition, t,
 end
 
 # version for curved meshes
-function Trixi.calc_volume_integral!(du, u, mesh::DGMultiMesh{NDIMS_AMBIENT, <:Trixi.NonAffine},
+function Trixi.calc_volume_integral!(du, u, mesh::DGMultiMesh,
                                have_nonconservative_terms::False,
                                equations::AbstractCovariantEquations{NDIMS},
                                volume_integral::VolumeIntegralWeakForm, dg::DGMulti,
@@ -92,11 +92,17 @@ function Trixi.calc_interface_flux!(cache, surface_integral::SurfaceIntegralWeak
         uP = u_face_values[idP]
         auxM = aux_face_values[idM]
         auxP = aux_face_values[idP]
+        # Transform uP to the same coordinate system as uM
+        uP_global = contravariant2global(uP, auxP, equations)
+        uP_transformed_to_M = global2contravariant(uP_global, auxM, equations)
+
+        # compute the normal vector at the face
         normal = SVector{NDIMS_AMBIENT}(getindex.(nxyzJ, idM)) / Jf[idM] 
         # TODO: make this more general, right now we throw out the last coordinates
         normal = SVector{NDIMS}(cartesian2spherical(normal..., getindex.(xyzf, idM))[1:NDIMS])
+        # normal = global2contravariant(normal, auxM, equations)
         
-        flux_face_values[idM] = surface_flux(uM, uP, auxM, auxP, normal, equations) * Jf[idM]
+        flux_face_values[idM] = surface_flux(uM, uP_transformed_to_M, auxM, auxM, normal, equations) * Jf[idM]
     end
 end
 

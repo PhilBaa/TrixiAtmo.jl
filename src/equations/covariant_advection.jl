@@ -40,9 +40,12 @@ variables, similarly to the geometric information.
 struct CovariantLinearAdvectionEquation2D{GlobalCoordinateSystem} <:
        AbstractCovariantEquations{2, 3, GlobalCoordinateSystem, 3}
     global_coordinate_system::GlobalCoordinateSystem
+    flat::Bool
+
     function CovariantLinearAdvectionEquation2D(;
-                                                global_coordinate_system = GlobalCartesianCoordinates())
-        return new{typeof(global_coordinate_system)}(global_coordinate_system)
+            global_coordinate_system = GlobalCartesianCoordinates(),
+            flat::Bool = false)
+        new{typeof(global_coordinate_system)}(global_coordinate_system, flat)
     end
 end
 

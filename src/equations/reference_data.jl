@@ -68,6 +68,28 @@ This problem is adapted from Case 1 of the test suite described in the following
     return cartesian2global(SVector(h, vx, vy, vz, zero(RealT)), x, equations)
 end
 
+
+"""
+    initial_condition_convergence_test(x, t, equations::LinearScalarAdvectionEquation1D)
+
+A smooth initial condition used for convergence tests.
+"""
+function initial_condition_flat(x, t, equations)
+    # Store translated coordinate for easy use of exact solution
+    RealT = eltype(x)
+    vx, vy, vz = 1.0, 1.0, 0.0
+    v = SVector(vx, vy, vz)
+    x_trans = x - v * t
+
+    c = 1
+    A = 0.5f0
+    L = 2
+    f = 1.0f0 / L
+    omega = 2 * convert(RealT, pi) * f
+    scalar = c + A * sin(omega * sum(x_trans[1:2]))
+    return SVector(scalar, vx, vy, vz)
+end
+
 @doc raw"""
     initial_condition_geostrophic_balance(x, t, equations)
 

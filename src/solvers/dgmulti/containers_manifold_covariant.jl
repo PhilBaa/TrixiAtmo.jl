@@ -94,7 +94,8 @@ function init_auxiliary_node_variables!(aux_values, aux_quad_values, mesh::DGMul
             basis_covariant = calc_basis_covariant(v1, v2, v3,
                                                    rd.rst[2][i], rd.rst[3][i],
                                                    radius,
-                                                   equations.global_coordinate_system)
+                                                   equations.global_coordinate_system,
+                                                   equations)
             
             aux_node[1:6] = SVector(basis_covariant)
             
@@ -137,7 +138,7 @@ function init_auxiliary_node_variables!(aux_values, aux_quad_values, mesh::DGMul
             basis_covariant = calc_basis_covariant(v1, v2, v3,
                                                    rd.rstq[2][i], rd.rstq[3][i],
                                                    radius,
-                                                   equations.global_coordinate_system)
+                                                   equations.global_coordinate_system, equations)
             
             aux_node[1:6] = SVector(basis_covariant)
             
@@ -179,8 +180,7 @@ end
 # covariant metric tensor and a_i = A[1,i] * e_x + A[2,i] * e_y + A[3,i] * e_z denotes 
 # the covariant tangent basis, where e_x, e_y, and e_z are the Cartesian unit basis vectors.
 @inline function calc_basis_covariant(v1, v2, v3, xi2, xi3, radius,
-                                      ::GlobalCartesianCoordinates)
-
+                                      ::GlobalCartesianCoordinates, equations)
     # Construct a bilinear mapping based on the four corner vertices
     xe = 0.5f0 * (-(xi2 + xi3) * v1 + (1 + xi2) * v2 +
           (1 + xi3) * v3)
@@ -189,6 +189,11 @@ end
               (-v1 + v2)
     dxedxi3 = 0.5f0 *
               (-v1 + v3)
+
+    if equations.flat
+        return SMatrix{3, 2}(dxedxi2[1], dxedxi2[2], dxedxi2[3],
+                             dxedxi3[1], dxedxi3[2], dxedxi3[3])
+    end
 
     # Use product/quotient rule on the projection
     norm_xe = norm(xe)
