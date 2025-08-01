@@ -94,7 +94,7 @@ function Trixi.max_dt(u, t, mesh::DGMultiMesh,
     # `polydeg+1`. This is because `nnodes(dg)` returns the total number of
     # multi-dimensional nodes for DGMulti solver types, while `nnodes(dg)` returns
     # the number of 1D nodes for `DGSEM` solvers.
-    return 0.001
+    return 0.05
     return 2 * dt_min * Trixi.dt_polydeg_scaling(dg)
 end
 

@@ -18,61 +18,40 @@ function Trixi.compute_coefficients!(u, initial_condition, t,
     Trixi.apply_to_each_field(Trixi.mul_by!(rd.Pq), u, u_values)
 end
 
-# version for curved meshes
-function Trixi.calc_volume_integral!(du, u, mesh::DGMultiMesh,
+# version for affine meshes
+function Trixi.calc_volume_integral!(du, u, mesh::DGMultiMesh{NDIMS_AMBIENT},
                                have_nonconservative_terms::False,
                                equations::AbstractCovariantEquations{NDIMS},
                                volume_integral::VolumeIntegralWeakForm, dg::DGMulti,
                                cache) where {NDIMS_AMBIENT, NDIMS}
     rd = dg.basis
-    (; weak_differentiation_matrices, u_values) = cache
     (; aux_quad_values) = cache
-    (; dxidxhatj) = cache
+    @unpack weak_differentiation_matrices, dxidxhatj, u_values, local_values_threaded = cache
+    @unpack rstxyzJ = mesh.md # geometric terms
 
     # interpolate to quadrature points
     Trixi.apply_to_each_field(Trixi.mul_by!(rd.Vq), u_values, u)
 
-    Trixi.@threaded for e in eachelement(mesh, dg, cache)
-        flux_values = cache.flux_threaded[Threads.threadid()]
+    Trixi.@threaded for e in Trixi.eachelement(mesh, dg, cache)
+        flux_values = local_values_threaded[Threads.threadid()]
         for i in 1:NDIMS    # specialization for 2D covariant equations
-            # Here, the broadcasting operation does not allocate
-            # TODO: Now this is completely wrong and just needs to be done differently
-            # old code
-            # flux_values[i] .= flux.(view(u_values, :, e), i, equations)
-            for j in Trixi.each_quad_node(mesh, dg)
+            for j in Trixi.eachindex(flux_values)
                 u_node = u_values[j, e]
                 aux_node = aux_quad_values[j, e]
-                flux_values[i][j] =
-                    flux(u_node, aux_node, i, equations)
-            end           
-        end
-
-        # rotate flux with df_i/dx_i = sum_j d(x_i)/d(x̂_j) * d(f_i)/d(x̂_j).
-        # Example: df_x/dx + df_y/dy = dr/dx * df_x/dr + ds/dx * df_x/ds
-        #                  + dr/dy * df_y/dr + ds/dy * df_y/ds
-        #                  = Dr * (dr/dx * fx + dr/dy * fy) + Ds * (...)
-        #                  = Dr * (f_r) + Ds * (f_s)
-
-        rotated_flux_values = cache.rotated_flux_threaded[Threads.threadid()]
-        for j in Trixi.eachdim(mesh)
-            fill!(rotated_flux_values, zero(eltype(rotated_flux_values)))
-
-            # compute rotated fluxes
-            for i in Trixi.eachdim(mesh)
-                for ii in eachindex(rotated_flux_values)
-                    flux_i_node = flux_values[i][ii]
-                    dxidxhatj_node = dxidxhatj[i, j][ii, e]
-                    rotated_flux_values[ii] = rotated_flux_values[ii] +
-                                              dxidxhatj_node * flux_i_node
-                end
+                detg = area_element(aux_node, equations)
+                a = basis_contravariant(aux_node, equations)[1:2, i]
+                flux_values[j] = flux(u_node, aux_node, a, equations) / detg 
             end
 
-            # apply weak differentiation matrices to rotated fluxes
-            Trixi.apply_to_each_field(Trixi.mul_by_accum!(weak_differentiation_matrices[j]),
-                                view(du, :, e), rotated_flux_values)
+            for j in Trixi.eachdim(mesh)
+                Trixi.apply_to_each_field(Trixi.mul_by_accum!(weak_differentiation_matrices[j], 
+                                                              dxidxhatj[i, j][1, e]),
+                                    view(du, :, e), flux_values)
+            end
         end
     end
 end
+
 
 function Trixi.calc_interface_flux!(cache, surface_integral::SurfaceIntegralWeakForm,
                               mesh::DGMultiMesh,
@@ -83,7 +62,6 @@ function Trixi.calc_interface_flux!(cache, surface_integral::SurfaceIntegralWeak
     md = mesh.md
     @unpack mapM, mapP, nxyzJ, xyzf, Jf = md
     @unpack u_face_values, flux_face_values, aux_face_values, outer_radius = cache
-
     Trixi.@threaded for face_node_index in Trixi.each_face_node_global(mesh, dg, cache)
 
         # inner (idM -> minus) and outer (idP -> plus) indices
@@ -97,12 +75,14 @@ function Trixi.calc_interface_flux!(cache, surface_integral::SurfaceIntegralWeak
         uP_transformed_to_M = global2contravariant(uP_global, auxM, equations)
 
         # compute the normal vector at the face
-        normal = SVector{NDIMS_AMBIENT}(getindex.(nxyzJ, idM)) / Jf[idM] 
-        # TODO: make this more general, right now we throw out the last coordinates
-        normal = SVector{NDIMS}(cartesian2spherical(normal..., getindex.(xyzf, idM))[1:NDIMS])
-        # normal = global2contravariant(normal, auxM, equations)
+        normal = SVector{NDIMS_AMBIENT}(getindex.(nxyzJ, idM)) / Jf[idM]
+        # TODO: Is there no function to transform vectors to the reference element?
+        normal = global2contravariant((0, normal...), auxM, equations)[2:end]
+
         
-        flux_face_values[idM] = surface_flux(uM, uP_transformed_to_M, auxM, auxM, normal, equations) * Jf[idM]
+        detg = area_element(auxM, equations)
+
+        flux_face_values[idM] = surface_flux(uM, uP_transformed_to_M, auxM, auxM, normal, equations) / detg * Jf[idM] 
     end
 end
 

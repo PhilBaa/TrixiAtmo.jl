@@ -21,7 +21,7 @@ tensor_polydeg = (1, 1) # culprit for DomainError
 
 dg = DGMulti(element_type = Wedge(),
              approximation_type = Polynomial(),
-             surface_flux = flux_lax_friedrichs,
+             surface_flux = flux_central,
              polydeg = tensor_polydeg)
 
 ###############################################################################
@@ -45,7 +45,7 @@ semi = SemidiscretizationHyperbolic(mesh, equations, initial_condition_transform
 # ODE solvers, callbacks etc.
 
 # Create ODE problem with time span from 0 to T
-ode = semidiscretize(semi, (0.0, 0.01))
+ode = semidiscretize(semi, (0.0, 5.0))
 
 # At the beginning of the main loop, the SummaryCallback prints a summary of the simulation 
 # setup and resets the timers
