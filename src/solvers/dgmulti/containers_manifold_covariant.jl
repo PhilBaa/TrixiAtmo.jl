@@ -62,6 +62,7 @@ function init_auxiliary_node_variables!(aux_values, aux_quad_values, mesh::DGMul
                                         equations::AbstractCovariantEquations{2, 3}, dg,
                                         bottom_topography)
     rd = dg.basis
+    (; V1) = rd
     (; line, tri) = rd.approximation_type
     (; xyz) = mesh.md
     md = mesh.md
@@ -74,18 +75,14 @@ function init_auxiliary_node_variables!(aux_values, aux_quad_values, mesh::DGMul
     # radius = norm(Trixi.get_node_coords(tree_node_coordinates, equations, dg, 1, 1, 1))
 
     for element in eachelement(mesh, dg)
-        if size(xyz[1][:, element])[1] != 6
+        VX = transpose(xyz[1][:, element]) / V1'
+        VY = transpose(xyz[2][:, element]) / V1'
+        VZ = transpose(xyz[3][:, element]) / V1'
 
-               error("The mesh element must have 6 corner vertices, but found $(size(xyz[1][:, element]))")
-        end
-        # Extract the corner vertex positions from the Mesh
-        # TODO: Find a way to extract corner vertices when plotting nodes are not excusively the corner vertices
-        v1 = [xyz[1][4, element], xyz[2][4, element], xyz[3][4, element]]
-        v2 = [xyz[1][5, element], xyz[2][5, element], xyz[3][5, element]]
-        v3 = [xyz[1][6, element], xyz[2][6, element], xyz[3][6, element]]
-        v1, v2, v3 = v1, v3, v2
+        v1 = [VX[1], VY[1], VZ[1]]
+        v2 = [VX[2], VY[2], VZ[2]]
+        v3 = [VX[3], VY[3], VZ[3]]
         radius = norm(v3)
-
         aux_node = Vector{eltype(aux_values[1, 1])}(undef, n_aux)
         
         # Compute the auxiliary metric information at each node
