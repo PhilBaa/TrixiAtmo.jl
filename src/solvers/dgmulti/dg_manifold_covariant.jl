@@ -27,7 +27,11 @@ function Trixi.calc_volume_integral!(du, u, mesh::DGMultiMesh{NDIMS_AMBIENT},
     rd = dg.basis
     (; aux_quad_values) = cache
     @unpack weak_differentiation_matrices, dxidxhatj, u_values, local_values_threaded = cache
-    @unpack rstxyzJ = mesh.md
+    @unpack rstxyzJ, J = mesh.md
+    rd = dg.basis
+    (; Vq) = rd
+
+    Jq = Vq * J
 
     # interpolate to quadrature points
     Trixi.apply_to_each_field(Trixi.mul_by!(rd.Vq), u_values, u)
@@ -39,7 +43,8 @@ function Trixi.calc_volume_integral!(du, u, mesh::DGMultiMesh{NDIMS_AMBIENT},
                 u_node = u_values[j, e]
                 aux_node = aux_quad_values[j, e]
                 detg = area_element(aux_node, equations)
-                flux_values[j] = flux(u_node, aux_node, i, equations)
+                J_node = Jq[j, e]
+                flux_values[j] = flux(u_node, aux_node, i, equations) * (J_node / detg)
                 
             end
 
