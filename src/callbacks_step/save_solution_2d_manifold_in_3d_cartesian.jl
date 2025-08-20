@@ -131,10 +131,10 @@ function Trixi.save_solution_file(u, time, dt, timestep,
 
     # Filename based on current time step.
     if isempty(system)
-        filename = joinpath(output_directory, @sprintf("solution_%09d.h5", timestep))
+        filename = joinpath(output_directory, @sprintf("solution_%09d.vtu", timestep))
     else
         filename = joinpath(output_directory,
-                            @sprintf("solution_%s_%09d.h5", system, timestep))
+                            @sprintf("solution_%s_%09d.vtu", system, timestep))
     end
 
     # Convert to different set of variables if requested.
@@ -146,68 +146,11 @@ function Trixi.save_solution_file(u, time, dt, timestep,
         # Find out variable count by looking at output from `solution_variables` function.
         n_vars = length(data[1])
     end
-
-    # Open file (clobber existing content).
-    h5open(filename, "w") do file
-        # Add context information as attributes.
-        attributes(file)["ndims"] = ndims(mesh)
-        attributes(file)["equations"] = Trixi.get_name(equations)
-        if dg.basis.element_type isa Wedge
-            attributes(file)["polydeg_tri"] = dg.basis.N[2]
-            attributes(file)["polydeg_line"] = dg.basis.N[1]
-        else
-            attributes(file)["polydeg"] = dg.basis.N
-        end
-
-        attributes(file)["element_type"] = dg.basis.element_type |> typeof |> nameof |>
-                                           string
-        attributes(file)["n_vars"] = n_vars
-        attributes(file)["n_elements"] = nelements(dg, cache)
-        attributes(file)["dof_per_elem"] = length(dg.basis.r)
-        attributes(file)["mesh_type"] = Trixi.get_name(mesh)
-        attributes(file)["mesh_file"] = splitdir(mesh.current_filename)[2]
-        attributes(file)["time"] = convert(Float64, time) # Ensure that `time` is written as a double precision scalar.
-        attributes(file)["dt"] = convert(Float64, dt) # Ensure that `dt` is written as a double precision scalar.
-        attributes(file)["timestep"] = timestep
-
-        # Store each variable of the solution data.
-        for v in 1:n_vars
-            temp = zeros(size(u.u))
-            n_nodes, n_elems = size(u.u)
-            for i_elem in 1:n_elems
-                for i_node in 1:n_nodes
-                    temp[i_node, i_elem] = data[i_node, i_elem][v]
-                end
-            end
-
-            file["variables_$v"] = temp
-
-            # Add variable name as attribute.
-            var = file["variables_$v"]
-            attributes(var)["name"] = varnames(solution_variables, equations)[v]
-        end
-
-        # Store element variables.
-        for (v, (key, element_variable)) in enumerate(element_variables)
-            # Add to file.
-            file["element_variables_$v"] = element_variable
-
-            # Add variable name as attribute.
-            var = file["element_variables_$v"]
-            attributes(var)["name"] = string(key)
-        end
-
-        # Store node variables.
-        for (v, (key, node_variable)) in enumerate(node_variables)
-            # Add to file
-            file["node_variables_$v"] = node_variable
-
-            # Add variable name as attribute.
-            var = file["node_variables_$v"]
-            attributes(var)["name"] = string(key)
-        end
-    end
-    return filename
+    # Create a dictionary with variable names and data
+    var_names = Trixi.varnames(solution_variables, equations)
+    var_dict = Dict(var_names[i] => getindex.(data, i) for i in 1:n_vars)
+    StartUpDG.export_to_vtk(dg.basis, mesh.md, var_dict, filename;
+                           equi_dist_nodes = false)
 end
 
 
