@@ -104,8 +104,7 @@ end
     z = zero(eltype(u))
     J = area_element(aux_vars, equations)
     vcon = velocity_contravariant(u, equations)
-    g = metric_covariant(aux_vars, equations)
-    a = dot(vcon, g * normal_direction) # velocity in normal direction
+    a = dot(vcon, normal_direction) # velocity in normal direction
     return SVector(J * u[1] * a, z, z)
 end
 

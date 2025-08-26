@@ -61,9 +61,12 @@ function Trixi.calc_interface_flux!(cache, surface_integral::SurfaceIntegralWeak
                               equations::AbstractCovariantEquations{NDIMS},
                               dg::DGMulti{NDIMS_AMBIENT}) where {NDIMS_AMBIENT, NDIMS}
     @unpack surface_flux = surface_integral
+    rd = dg.basis
+    (; nrstJ, Nfq) = rd
     md = mesh.md
     @unpack mapM, mapP, nxyzJ, xyzf, Jf = md
     @unpack u_face_values, flux_face_values, aux_face_values, outer_radius = cache
+
     Trixi.@threaded for face_node_index in Trixi.each_face_node_global(mesh, dg, cache)
 
         # inner (idM -> minus) and outer (idP -> plus) indices
@@ -72,16 +75,17 @@ function Trixi.calc_interface_flux!(cache, surface_integral::SurfaceIntegralWeak
         uP = u_face_values[idP]
         auxM = aux_face_values[idM]
         auxP = aux_face_values[idP]
+
         # Transform uP to the same coordinate system as uM
         uP_global = contravariant2global(uP, auxP, equations)
         uP_transformed_to_M = global2contravariant(uP_global, auxM, equations)
 
-        # compute the normal vector at the face
-        normal = SVector{NDIMS_AMBIENT}(getindex.(nxyzJ, idM)) / Jf[idM]
-        # TODO: Is there no function to transform vectors to the reference element?
-        normal = global2contravariant((0, normal...), auxM, equations)[2:end]
+        # Get element and local face info
+        reference_face_id = mod(idM - 1, Nfq) + 1
+        # Get reference normals for this face
+        normal = SVector{NDIMS}(nrstJ[1][reference_face_id], nrstJ[2][reference_face_id])
+        normal /= norm(normal)
 
-        
         detg = area_element(auxM, equations)
 
         flux_face_values[idM] = surface_flux(uM, uP_transformed_to_M, auxM, auxM, normal, equations) / detg * Jf[idM] 
