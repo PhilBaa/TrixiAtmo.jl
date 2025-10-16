@@ -1,54 +1,35 @@
 ###############################################################################
 # DGSEM for the linear advection equation on a prismed icosahedral grid
 ###############################################################################
-# To run a convergence test, use
-# convergence_test("../examples/elixir_spherical_advection_covariant_prismed_icosahedron.jl", 4, initial_refinement_level = 1)
 
 using OrdinaryDiffEq, Trixi, TrixiAtmo
 
 ###############################################################################
 # Spatial discretization
 
-initial_condition = initial_condition_gaussian
+initial_condition = initial_condition_barotropic_instability
 
-equations = CovariantLinearAdvectionEquation2D(global_coordinate_system = GlobalCartesianCoordinates())
+equations = CovariantShallowWaterEquations2D(EARTH_GRAVITATIONAL_ACCELERATION,
+                                                  EARTH_ROTATION_RATE,
+                                                  global_coordinate_system = GlobalCartesianCoordinates())
 
 ###############################################################################
 # Build DG solver.
 
-tensor_polydeg = (1, 1)
+tensor_polydeg = (2, 1)
 
-volume_flux = (flux_wintermeyer_etal, flux_nonconservative_wintermeyer_etal)
-# Up to Trixi.jl version 0.13.0, `max_abs_speed_naive` was used as the default wave speed estimate of
-# `const flux_lax_friedrichs = FluxLaxFriedrichs(), i.e., `FluxLaxFriedrichs(max_abs_speed = max_abs_speed_naive)`.
-# In the `StepsizeCallback`, though, the less diffusive `max_abs_speeds` is employed which is consistent with `max_abs_speed`.
-# Thus, we exchanged in PR#2458 of Trixi.jl the default wave speed used in the LLF flux to `max_abs_speed`.
-# To ensure that every example still runs we specify explicitly `FluxLaxFriedrichs(max_abs_speed_naive)`.
-# We remark, however, that the now default `max_abs_speed` is in general recommended due to compliance with the 
-# `StepsizeCallback` (CFL-Condition) and less diffusion.
-surface_flux = (FluxLaxFriedrichs(max_abs_speed_naive), flux_nonconservative_fjordholm_etal)
-
-dg = DGMulti(polydeg = tensor_polydeg,
-             element_type = Wedge(),
-             approximation_type = SBP(),
-             surface_integral = SurfaceIntegralWeakForm(surface_flux),
-             volume_integral = VolumeIntegralFluxDifferencing(volume_flux))
-
-# dg = DGMulti(element_type = Wedge(),
-#              approximation_type = Polynomial(),
-#              surface_flux = flux_central,
-#              polydeg = tensor_polydeg)
-
+dg = DGMulti(element_type = Wedge(),
+             approximation_type = Polynomial(),
+             surface_flux = flux_central,
+             polydeg = tensor_polydeg)
 
 ###############################################################################
 # Build mesh.
 
-initial_refinement_level = 3
-
 mesh = DGMultiMeshPrismIcosahedron(dg;
-    inner_radius = 0.999 * EARTH_RADIUS,
+    inner_radius = 0.9999 * EARTH_RADIUS,
     outer_radius = EARTH_RADIUS,
-    initial_refinement = initial_refinement_level)
+    initial_refinement = 4)
 
 # Transform the initial condition to the proper set of conservative variables
 initial_condition_transformed = transform_initial_condition(initial_condition, equations)
@@ -74,7 +55,7 @@ analysis_callback = AnalysisCallback(semi, interval = 10,
                                      uEltype = real(dg))
 
 # The SaveSolutionCallback allows to save the solution to a file in regular intervals
-save_solution = SaveSolutionCallback(interval = 1,
+save_solution = SaveSolutionCallback(interval = 10,
                                      solution_variables = contravariant2global)
 
 # The StepsizeCallback handles the re-calculation of the maximum Δt after each time step

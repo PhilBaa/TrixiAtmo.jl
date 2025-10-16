@@ -1,7 +1,7 @@
 # Constructs cache variables including auxiliary variables for covariant equations and DGMultiMeshes
 function Trixi.create_cache(mesh::DGMultiMesh{NDIMS}, equations::AbstractCovariantEquations, dg::Trixi.DGMultiWeakForm,
                             metric_terms, auxiliary_field, RealT,
-                      uEltype) where {NDIMS}
+                            uEltype) where {NDIMS}
     rd = dg.basis
     md = mesh.md
 
@@ -62,3 +62,4 @@ end
 
 include("containers_manifold_covariant.jl")
 include("dg_manifold_covariant.jl")
+include("flux_differencing_covariant.jl")

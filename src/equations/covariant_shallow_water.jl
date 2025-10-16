@@ -186,6 +186,29 @@ end
     return SVector(J * h_vcon[orientation], J * momentum_flux_1, J * momentum_flux_2)
 end
 
+# Flux as a function of the state vector u, as well as the auxiliary variables aux_vars, 
+# which contain the geometric information required for the covariant form
+@inline function Trixi.flux(u, aux_vars, normal_direction::AbstractVector,
+                            equations::CovariantShallowWaterEquations2D)
+    # Geometric variables
+    Gcon = metric_contravariant(aux_vars, equations)
+    J = area_element(aux_vars, equations)
+
+    # Physical variables
+    h = waterheight(u, equations)
+    h_vcon = momentum_contravariant(u, equations)
+
+    # Compute and store the velocity and gravitational terms
+    vcon = dot(h_vcon, normal_direction) / h
+    gravitational_term = 0.5f0 * equations.gravity * h^2
+
+    # Compute the momentum flux components in the desired orientation
+    momentum_flux_1 = h_vcon[1] * vcon + dot(Gcon[1, :], normal_direction) * gravitational_term
+    momentum_flux_2 = h_vcon[2] * vcon + dot(Gcon[2, :], normal_direction) * gravitational_term
+
+    return SVector(J * dot(h_vcon, normal_direction), J * momentum_flux_1, J * momentum_flux_2)
+end
+
 # Standard geometric and Coriolis source terms for a rotating sphere
 @inline function source_terms_geometric_coriolis(u, x, t, aux_vars,
                                                  equations::CovariantShallowWaterEquations2D)

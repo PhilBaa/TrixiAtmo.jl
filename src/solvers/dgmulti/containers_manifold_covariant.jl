@@ -65,9 +65,8 @@ function init_auxiliary_node_variables!(aux_values, mesh::DGMultiMesh,
             end
             aux_values[i, element] = SVector{n_aux}(aux_node)
         end
-        # TODO: implement Christoffel symbols
         # Christoffel symbols of the second kind (aux_values[21:26, :, :, element])
-        # calc_christoffel_symbols!(aux_values, mesh, equations, dg, element)
+        calc_christoffel_symbols!(aux_values, mesh, equations, dg, element)
     end
 
     return nothing
@@ -95,5 +94,72 @@ end
 
     return SMatrix{3, 2}(dxdxi1[1], dxdxi1[2], dxdxi1[3],
                          dxdxi2[1], dxdxi2[2], dxdxi2[3])
+end
+
+function calc_christoffel_symbols!(aux_values, mesh::DGMultiMesh,
+                                   equations::AbstractCovariantEquations{2, 3}, dg,
+                                   element)
+    rd = dg.basis
+    (; Vq, Drst) = rd
+
+    # Compute differentiation matrices for ξ¹ (s) and ξ² (t)
+    # TODO: This is probably wrong
+    # Dsq, Dtq = map(D -> Vq * D, Drst[2:3])
+    Dsq, Dtq = map(D -> D, Drst[1:2])
+
+    for i in 1:Trixi.nnodes(dg)
+
+        # Numerically differentiate covariant metric components with respect to ξ¹
+        dG11dxi1 = zero(eltype(aux_values[i, element]))
+        dG12dxi1 = zero(eltype(aux_values[i, element]))
+        dG22dxi1 = zero(eltype(aux_values[i, element]))
+        for jj in 1:nnodes(dg)
+            aux_node_jj = aux_values[jj, element]
+            Gcov_jj = metric_covariant(aux_node_jj, equations)
+            dG11dxi1 += Dsq[i, jj] * Gcov_jj[1, 1]
+            dG12dxi1 += Dsq[i, jj] * Gcov_jj[1, 2]
+            dG22dxi1 += Dsq[i, jj] * Gcov_jj[2, 2]
+        end
+
+        # Numerically differentiate covariant metric components with respect to ξ²
+        dG11dxi2 = zero(eltype(aux_values[i, element]))
+        dG12dxi2 = zero(eltype(aux_values[i, element]))
+        dG22dxi2 = zero(eltype(aux_values[i, element]))
+        for jj in 1:nnodes(dg)
+            aux_node_jj = aux_values[jj, element]
+            Gcov_jj = metric_covariant(aux_node_jj, equations)
+            dG11dxi2 += Dtq[i, jj] * Gcov_jj[1, 1]
+            dG12dxi2 += Dtq[i, jj] * Gcov_jj[1, 2]
+            dG22dxi2 += Dtq[i, jj] * Gcov_jj[2, 2]
+        end
+
+        # Compute Christoffel symbols of the first kind
+        christoffel_firstkind_1 = SMatrix{2, 2}(0.5f0 * dG11dxi1,
+                                                0.5f0 * dG11dxi2,
+                                                0.5f0 * dG11dxi2,
+                                                dG12dxi2 - 0.5f0 * dG22dxi1)
+        christoffel_firstkind_2 = SMatrix{2, 2}(dG12dxi1 - 0.5f0 * dG11dxi2,
+                                                0.5f0 * dG22dxi1,
+                                                0.5f0 * dG22dxi1,
+                                                0.5f0 * dG22dxi2)
+
+        # Raise indices to get Christoffel symbols of the second kind
+        aux_node = Vector(aux_values[i, element])
+        Gcon = metric_contravariant(aux_node, equations)
+        aux_node[21] = Gcon[1, 1] * christoffel_firstkind_1[1, 1] +
+                                           Gcon[1, 2] * christoffel_firstkind_2[1, 1]
+        aux_node[22] = Gcon[1, 1] * christoffel_firstkind_1[1, 2] +
+                                           Gcon[1, 2] * christoffel_firstkind_2[1, 2]
+        aux_node[23] = Gcon[1, 1] * christoffel_firstkind_1[2, 2] +
+                                           Gcon[1, 2] * christoffel_firstkind_2[2, 2]
+
+        aux_node[24] = Gcon[2, 1] * christoffel_firstkind_1[1, 1] +
+                                           Gcon[2, 2] * christoffel_firstkind_2[1, 1]
+        aux_node[25] = Gcon[2, 1] * christoffel_firstkind_1[1, 2] +
+                                           Gcon[2, 2] * christoffel_firstkind_2[1, 2]
+        aux_node[26] = Gcon[2, 1] * christoffel_firstkind_1[2, 2] +
+                                           Gcon[2, 2] * christoffel_firstkind_2[2, 2]
+        aux_values[i, element] = SVector{n_aux_node_vars(equations)}(aux_node)
+    end
 end
 end # @muladd
