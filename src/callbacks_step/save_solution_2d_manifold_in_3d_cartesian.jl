@@ -149,7 +149,7 @@ function Trixi.save_solution_file(u, time, dt, timestep,
     var_names = Trixi.varnames(solution_variables, equations)
     var_dict = Dict(var_names[i] => getindex.(data, i) for i in 1:n_vars)
     StartUpDG.export_to_vtk(dg.basis, mesh.md, var_dict, filename;
-                            equi_dist_nodes = false)
+                            equi_dist_nodes = true)
 end
 
 # Calculate the primitive variables and the relative vorticity at a given node
