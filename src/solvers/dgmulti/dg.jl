@@ -23,7 +23,7 @@ function Trixi.create_cache(mesh::DGMultiMesh{NDIMS}, equations::AbstractCovaria
     aux_face_values = Trixi.allocate_nested_array(uEltype, naux, size(md.xf), dg)
     
     if typeof(rd.approximation_type) <:
-       Union{SBP, Trixi.AbstractNonperiodicDerivativeOperator}
+       Union{SBP, TensorProductWedgeSBP, Trixi.AbstractNonperiodicDerivativeOperator}
         lift_scalings = rd.wf ./ rd.wq[rd.Fmask] # lift scalings for diag-norm SBP operators
     else
         lift_scalings = nothing

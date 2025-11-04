@@ -23,11 +23,7 @@ function Trixi.create_cache(mesh::DGMultiMesh, equations::AbstractCovariantEquat
 
     init_auxiliary_node_variables!(aux_values, mesh, equations, dg, auxiliary_field)
     aux_quad_values .= aux_values
-    @show typeof(aux_face_values)
-    @show typeof(aux_values)
-    @show typeof(Trixi.mul_by!(rd.Vf))
     Trixi.apply_to_each_field(Trixi.mul_by!(rd.Vf), aux_face_values, aux_values)
-    @show 1
     lift_scalings = rd.wf ./ rd.wq[vcat(rd.Fmask...)] # lift scalings for diag-norm SBP operators
 
     local_values_threaded = [Trixi.allocate_nested_array(uEltype, nvars, (rd.Nq,), dg)
@@ -59,21 +55,4 @@ function Trixi.compute_coefficients!(::Nothing, u, initial_condition, t,
 
     # multiplying by Pq computes the L2 projection
     u .= u_values
-end
-
-function Trixi.integrate(func::Func, u,
-                   mesh::DGMultiMesh,
-                   equations, dg::DGMulti, cache; normalize = true) where {Func}
-    rd = dg.basis
-    md = mesh.md
-    @unpack u_values = cache
-
-    # interpolate u to quadrature points
-    u_values .= u
-
-    integral = sum(md.wJq .* func.(u_values, equations))
-    if normalize == true
-        integral /= sum(md.wJq)
-    end
-    return integral
 end
