@@ -40,19 +40,40 @@ function Trixi.create_cache(mesh::DGMultiMesh, equations::AbstractCovariantEquat
             local_values_threaded, fluxdiff_local_threaded)
 end
 
-function Trixi.compute_coefficients!(::Nothing, u, initial_condition, t,
-                                     mesh::DGMultiMesh, equations::AbstractCovariantEquations,
-                                     dg::Trixi.DGMultiFluxDiffSBP, cache)
-    md = mesh.md
-    rd = dg.basis
-    @unpack u_values, aux_quad_values = cache
-    # evaluate the initial condition at quadrature points
-    Trixi.@threaded for i in Trixi.each_quad_node_global(mesh, dg, cache)
-        x_node = SVector(getindex.(md.xyzq, i))
-        aux_node = aux_quad_values[i]
-        u_values[i] = initial_condition(x_node, t, aux_node, equations)
-    end
+# Version for sparse operators and symmetric fluxes with curved meshes
+@inline function Trixi.hadamard_sum!(du,
+                               A::LinearAlgebra.Adjoint{<:Any,
+                                                        <:AbstractSparseMatrixCSC},
+                               flux_is_symmetric::True, volume_flux,
+                               normal_directions::AbstractVector{<:AbstractVector},
+                               u, equations::AbstractCovariantEquations)
+    A_base = parent(A) # the adjoint of a SparseMatrixCSC is basically a SparseMatrixCSR
+    row_ids = axes(A, 2)
+    rows = rowvals(A_base)
+    vals = nonzeros(A_base)
 
-    # multiplying by Pq computes the L2 projection
-    u .= u_values
+    for i in row_ids
+        u_i = u[i]
+        du_i = du[i]
+        for id in nzrange(A_base, i)
+            j = rows[id]
+            # This routine computes only the upper-triangular part of the hadamard sum (A .* F).
+            # We avoid computing the lower-triangular part, and instead accumulate those contributions
+            # while computing the upper-triangular part (using the fact that A is skew-symmetric and F
+            # is symmetric).
+            if j > i
+                u_j = u[j]
+                A_ij = vals[id]
+
+                # provably entropy stable de-aliasing of geometric terms
+                normal_direction = 0.5 * (getindex.(normal_directions, i) +
+                                    getindex.(normal_directions, j))
+
+                AF_ij = 2 * A_ij * volume_flux(u_i, u_j, normal_direction, equations)
+                du_i = du_i + AF_ij
+                du[j] = du[j] - AF_ij
+            end
+        end
+        du[i] = du_i
+    end
 end
