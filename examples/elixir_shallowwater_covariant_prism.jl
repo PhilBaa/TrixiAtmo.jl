@@ -7,7 +7,7 @@ using OrdinaryDiffEq, Trixi, TrixiAtmo
 ###############################################################################
 # Spatial discretization
 
-initial_condition = initial_condition_geostrophic_balance
+initial_condition = initial_condition_barotropic_instability
 
 equations = CovariantShallowWaterEquations2D(EARTH_GRAVITATIONAL_ACCELERATION,
                                                   EARTH_ROTATION_RATE,
@@ -19,23 +19,10 @@ equations = CovariantShallowWaterEquations2D(EARTH_GRAVITATIONAL_ACCELERATION,
 tensor_polydeg = (2, 1)
 
 dg = DGMulti(element_type = Wedge(),
-             approximation_type = Polynomial(),
-             surface_flux = flux_central,
+             approximation_type = SBP(),
+             surface_flux = flux_lax_friedrichs,
              polydeg = tensor_polydeg)
 
-
-volume_flux = flux_central
-# Up to version 0.13.0, `max_abs_speed_naive` was used as the default wave speed estimate of
-# `const flux_lax_friedrichs = FluxLaxFriedrichs(), i.e., `FluxLaxFriedrichs(max_abs_speed = max_abs_speed_naive)`.
-# In the `StepsizeCallback`, though, the less diffusive `max_abs_speeds` is employed which is consistent with `max_abs_speed`.
-# Thus, we exchanged in PR#2458 the default wave speed used in the LLF flux to `max_abs_speed`.
-# To ensure that every example still runs we specify explicitly `FluxLaxFriedrichs(max_abs_speed_naive)`.
-# We remark, however, that the now default `max_abs_speed` is in general recommended due to compliance with the 
-# `StepsizeCallback` (CFL-Condition) and less diffusion.
-surface_flux = FluxLaxFriedrichs(max_abs_speed_naive)
-dg = DGMulti(polydeg = tensor_polydeg, element_type = Wedge(), approximation_type = SBP(),
-             surface_integral = SurfaceIntegralWeakForm(surface_flux),
-             volume_integral = VolumeIntegralFluxDifferencing(volume_flux))
 
 ###############################################################################
 # Build mesh.
@@ -49,7 +36,8 @@ mesh = DGMultiMeshPrismIcosahedron(dg;
 initial_condition_transformed = transform_initial_condition(initial_condition, equations)
 
 # A semidiscretization collects data structures and functions for the spatial discretization
-semi = SemidiscretizationHyperbolic(mesh, equations, initial_condition_transformed, dg)
+semi = SemidiscretizationHyperbolic(mesh, equations, initial_condition_transformed, dg,
+                                    source_terms = source_terms_geometric_coriolis)
 
 ###############################################################################
 # ODE solvers, callbacks etc.
@@ -70,7 +58,7 @@ analysis_callback = AnalysisCallback(semi, interval = 10,
 
 # The SaveSolutionCallback allows to save the solution to a file in regular intervals
 save_solution = SaveSolutionCallback(interval = 1,
-                                     solution_variables = contravariant2global)
+                                     solution_variables = cons2prim_and_vorticity)
 
 # The StepsizeCallback handles the re-calculation of the maximum Δt after each time step
 stepsize_callback = StepsizeCallback(cfl = 0.7)

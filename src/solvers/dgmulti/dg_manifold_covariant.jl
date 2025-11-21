@@ -19,6 +19,30 @@ function Trixi.compute_coefficients!(::Nothing, u, initial_condition, t,
     Trixi.apply_to_each_field(Trixi.mul_by!(rd.Pq), u, u_values)
 end
 
+# uses quadrature + projection to compute source terms.
+function Trixi.calc_sources!(du, u, t, source_terms,
+                       mesh, equations::AbstractCovariantEquations, dg::DGMulti, cache)
+    rd = dg.basis
+    md = mesh.md
+    @unpack Pq = rd
+    @unpack u_values, aux_values, local_values_threaded = cache
+    Trixi.@threaded for e in Trixi.eachelement(mesh, dg, cache)
+        source_values = local_values_threaded[Threads.threadid()]
+
+        u_e = view(u_values, :, e) # u_values should already be computed from volume integral
+        aux_e = view(aux_values, :, e)
+        #TODO: interpolate with Vq
+
+        for i in Trixi.each_quad_node(mesh, dg, cache)
+            source_values[i] = source_terms(u_e[i], SVector(getindex.(md.xyzq, i, e)),
+                                            t, aux_e[i], equations)
+        end
+        Trixi.apply_to_each_field(Trixi.mul_by_accum!(Pq), view(du, :, e), source_values)
+    end
+
+    return nothing
+end
+
 # version for covariant equations on DGMultiMeshes
 function Trixi.calc_volume_integral!(du, u, mesh::DGMultiMesh{NDIMS_AMBIENT, <:Trixi.NonAffine},
                                have_nonconservative_terms::False,

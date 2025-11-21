@@ -47,9 +47,13 @@ function convert_variables(u, solution_variables, mesh::DGMultiMesh,
     
     # Loop over all nodes and convert variables, passing in auxiliary variables
     for i in Trixi.each_dof_global(mesh, dg)
-        u_node = u[:, i]
-        aux_node = aux_values[i]
-        data[i] = solution_variables(u_node, aux_node, equations)
+        if applicable(solution_variables, u, mesh, equations, dg, cache, i)
+            data[i] = solution_variables(u, mesh, equations, dg, cache, i)
+        else
+            u_node = u[:, i]
+            aux_node = aux_values[i]
+            data[i] = solution_variables(u_node, aux_node, equations)
+        end
     end
     return data
 end
@@ -64,6 +68,21 @@ end
     u_node = Trixi.get_node_vars(u, equations, dg, i, j, element)
     aux_node = get_node_aux_vars(aux_node_vars, equations, dg, i, j, element)
     relative_vorticity = calc_vorticity_node(u, equations, dg, cache, i, j, element)
+    h_s = bottom_topography(aux_node, equations)
+    primitive_global = contravariant2global(cons2prim(u_node, aux_node, equations),
+                                            aux_node, equations)
+    return SVector(primitive_global..., h_s, relative_vorticity)
+end
+
+@inline function cons2prim_and_vorticity(u, mesh::DGMultiMesh, equations::AbstractCovariantEquations{2},
+                                         dg::DGMulti, cache, i)
+    (; aux_values) = cache
+    u_node = u[:, i]
+    aux_node = aux_values[i]
+    element = (i-1) ÷ nnodes(dg) + 1
+    local_node_index = (i - 1) % nnodes(dg) + 1
+    # @show local_node_index, element
+    relative_vorticity = calc_vorticity_node(u, equations, dg, cache, local_node_index, element)
     h_s = bottom_topography(aux_node, equations)
     primitive_global = contravariant2global(cons2prim(u_node, aux_node, equations),
                                             aux_node, equations)

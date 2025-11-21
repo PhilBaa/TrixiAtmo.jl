@@ -211,6 +211,34 @@ end
     return SVector(dv3dy - dv2dz, dv1dz - dv3dx, dv2dx - dv1dy)
 end
 
+@inline function calc_vorticity_node(u,
+                                     equations::AbstractEquations, dg::DGMulti, cache,
+                                     i, element)
+    rd = dg.basis
+    (; aux_values) = cache
+    (; Drst) = rd
+    Dr, Ds = Drst[1], Drst[2]
+
+    dv2dxi1 = dv1dxi2 = zero(eltype(u))
+    for ii in eachnode(dg)
+        index = (element - 1) * nnodes(dg) + ii
+        # @show nelements(dg, cache), nnodes(dg), nelements(dg, cache) * nnodes(dg)
+        # @show element, ii, index
+        # @show size(u[1, :]), index
+        u_node_ii = u[:, index]
+        aux_node_ii = aux_values[ii, element]
+        vcov = metric_covariant(aux_node_ii, equations) *
+               velocity_contravariant(u_node_ii, equations)
+        dv2dxi1 = dv2dxi1 + Dr[i, ii] * vcov[2]
+        dv1dxi2 = dv1dxi2 + Ds[i, ii] * vcov[1]
+
+    end
+
+    # compute the relative vorticity
+    aux_node = aux_values[i, element]
+    return (dv2dxi1 - dv1dxi2) / area_element(aux_node, equations)
+end
+
 # Variable names for cons2prim_and_vorticity
 function Trixi.varnames(::typeof(cons2prim_and_vorticity),
                         equations::ShallowWaterEquations3D)

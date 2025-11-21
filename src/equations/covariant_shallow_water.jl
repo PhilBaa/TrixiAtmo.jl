@@ -241,7 +241,7 @@ end
 
 # Maximum wave speed along the normal direction in reference space
 @inline function Trixi.max_abs_speed(u_ll, u_rr, aux_vars_ll, aux_vars_rr,
-                                     orientation,
+                                     orientation::Integer,
                                      equations::AbstractCovariantShallowWaterEquations2D)
     # Geometric variables
     Gcon_ll = metric_contravariant(aux_vars_ll, equations)
@@ -257,6 +257,26 @@ end
                sqrt(Gcon_ll[orientation, orientation] * h_ll * equations.gravity),
                abs(h_vcon_rr[orientation] / h_rr) +
                sqrt(Gcon_rr[orientation, orientation] * h_rr * equations.gravity))
+end
+
+# Maximum wave speed along the normal direction in reference space
+@inline function Trixi.max_abs_speed(u_ll, u_rr, aux_vars_ll, aux_vars_rr,
+                                     normal_direction::AbstractVector,
+                                     equations::AbstractCovariantShallowWaterEquations2D)
+    # Geometric variables
+    Gcon_ll = metric_contravariant(aux_vars_ll, equations)
+    Gcon_rr = metric_contravariant(aux_vars_rr, equations)
+
+    # Physical variables 
+    h_ll = waterheight(u_ll, equations)
+    h_rr = waterheight(u_rr, equations)
+    h_vcon_ll = momentum_contravariant(u_ll, equations)
+    h_vcon_rr = momentum_contravariant(u_rr, equations)
+
+    return max(abs(dot(normal_direction, h_vcon_ll) / h_ll) +
+               sqrt(dot(normal_direction, Gcon_ll * normal_direction) * h_ll * equations.gravity),
+               abs(dot(normal_direction, h_vcon_rr) / h_rr) +
+               sqrt(dot(normal_direction, Gcon_rr * normal_direction) * h_rr * equations.gravity))
 end
 
 # Maximum wave speeds with respect to the covariant basis
