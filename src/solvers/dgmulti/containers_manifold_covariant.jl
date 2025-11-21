@@ -187,7 +187,10 @@ function init_auxiliary_node_variables!(aux_values, mesh::DGMultiMesh,
                                                           metric_contravariant[2, 2])
             # Bottom topography
             if !isnothing(bottom_topography)
-                nothing
+                x_node = map(coords -> coords[i, element], xyz)
+                aux_node[20] = bottom_topography(x_node)
+            else
+                aux_node[20] = zero(eltype(aux_node))
             end
             aux_values[i, element] = SVector{n_aux}(aux_node)
         end

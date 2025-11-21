@@ -16,7 +16,6 @@ function Trixi.compute_coefficients!(::Nothing, u, initial_condition, t,
     Trixi.apply_to_each_field(Trixi.mul_by!(rd.Pq), u, u_values)
 end
 
-<<<<<<< HEAD
 # uses quadrature + projection to compute source terms.
 function Trixi.calc_sources!(du, u, t, source_terms,
                              mesh, equations::AbstractCovariantEquations, dg::DGMulti, cache)
@@ -45,8 +44,6 @@ function Trixi.calc_sources!(du, u, t, source_term::Nothing,
     nothing
 end
 
-=======
->>>>>>> b5deffc (Implemented covariant advection in DGMulti and added Icosahedron Mesh)
 # version for covariant equations on DGMultiMeshes
 function Trixi.calc_volume_integral!(du, u, mesh::DGMultiMesh{NDIMS_AMBIENT, <:Trixi.NonAffine},
                                have_nonconservative_terms::False,
@@ -57,11 +54,6 @@ function Trixi.calc_volume_integral!(du, u, mesh::DGMultiMesh{NDIMS_AMBIENT, <:T
     md = mesh.md
     (; weak_differentiation_matrices, u_values, aux_quad_values, local_values_threaded) = cache
 
-<<<<<<< HEAD
-=======
-    Jq = rd.Vq * md.J
-
->>>>>>> b5deffc (Implemented covariant advection in DGMulti and added Icosahedron Mesh)
     # interpolate to quadrature points
     Trixi.apply_to_each_field(Trixi.mul_by!(rd.Vq), u_values, u)
 
@@ -72,15 +64,7 @@ function Trixi.calc_volume_integral!(du, u, mesh::DGMultiMesh{NDIMS_AMBIENT, <:T
                 u_node = u_values[j, e]
                 aux_node = aux_quad_values[j, e]
                 area_elem = area_element(aux_node, equations)
-<<<<<<< HEAD
                 flux_values[j] = flux(u_node, aux_node, i, equations)
-=======
-                J_node = Jq[j, e]
-                # Rescale the flux, such that the volume integral becomes independent of the thickness
-                # of the spherical shell. We compute that thickness by taking the ratio of the element's
-                # volume and the area element. 
-                flux_values[j] = flux(u_node, aux_node, i, equations) * (J_node / area_elem)
->>>>>>> b5deffc (Implemented covariant advection in DGMulti and added Icosahedron Mesh)
             end
 
             Trixi.apply_to_each_field(Trixi.mul_by_accum!(weak_differentiation_matrices[i]),
@@ -89,19 +73,11 @@ function Trixi.calc_volume_integral!(du, u, mesh::DGMultiMesh{NDIMS_AMBIENT, <:T
     end
 end
 
-<<<<<<< HEAD
-=======
-# Calculate flux at interface by passing auxiliary variables to the surface flux function
->>>>>>> b5deffc (Implemented covariant advection in DGMulti and added Icosahedron Mesh)
 function Trixi.calc_interface_flux!(cache, surface_integral::SurfaceIntegralWeakForm,
                                     mesh::DGMultiMesh,
                                     have_nonconservative_terms::False,
                                     equations::AbstractCovariantEquations{NDIMS},
-<<<<<<< HEAD
                                     dg::DGMulti{NDIMS_AMBIENT, <:Tri}) where {NDIMS_AMBIENT, NDIMS}
-=======
-                                    dg::DGMulti{NDIMS_AMBIENT, <:Wedge}) where {NDIMS_AMBIENT, NDIMS}
->>>>>>> b5deffc (Implemented covariant advection in DGMulti and added Icosahedron Mesh)
     @unpack surface_flux = surface_integral
     md = mesh.md
     rd = dg.basis
@@ -125,28 +101,7 @@ function Trixi.calc_interface_flux!(cache, surface_integral::SurfaceIntegralWeak
         # the normal vector onto the (reference) tangent space of the manifold, possibly yielding a zero vector.
         ref_index = mod(face_node_index - 1, Nfq) + 1
         normal = SVector(ntuple(k -> nrstJ[k][ref_index], NDIMS))
-<<<<<<< HEAD
 
         flux_face_values[idM] = surface_flux(uM, uP_transformed_to_M, auxM, auxM, normal, equations)
-=======
-        normal = normal / norm(normal)
-        
-        # If the unprojected normal vector belonged one of the triangular faces of the reference wedge,
-        # the normalized projected normal vector consists of NaNs. In this case, we skip the flux computation,
-        if any(isnan, normal)
-            continue
-        end
-
-        # Compute the norm of the normal vector transformed to physical coordinates
-        basis = basis_contravariant(auxM, equations)
-        norm_normal_transformed = norm(transpose(basis) * normal)
-        area_elem = area_element(auxM, equations)
-
-        # Scale the fluxes by inverse norm of transformed normal vector and
-        # the area element to get the correct fluxes per unit area,
-        # making the surface integral independent of the thickness of the spherical shell.
-        factor = 1 / norm_normal_transformed * Jf[idM] / area_elem
-        flux_face_values[idM] = surface_flux(uM, uP_transformed_to_M, auxM, auxM, normal, equations) * factor
->>>>>>> b5deffc (Implemented covariant advection in DGMulti and added Icosahedron Mesh)
     end
 end
