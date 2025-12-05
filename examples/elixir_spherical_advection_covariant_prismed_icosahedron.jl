@@ -16,11 +16,11 @@ equations = CovariantLinearAdvectionEquation2D(global_coordinate_system = Global
 ###############################################################################
 # Build DG solver.
 
-tensor_polydeg = (2, 1)
+tensor_polydeg = 1
 
-dg = DGMulti(element_type = Wedge(),
-             approximation_type = Polynomial(),
-             surface_flux = flux_central,
+dg = DGMulti(element_type = Tri(),
+             approximation_type = SBP(),
+             surface_flux = flux_lax_friedrichs,
              polydeg = tensor_polydeg)
 
 
@@ -29,9 +29,7 @@ dg = DGMulti(element_type = Wedge(),
 
 initial_refinement_level = 3
 
-mesh = DGMultiMeshPrismIcosahedron(dg;
-    inner_radius = 0.999 * EARTH_RADIUS,
-    outer_radius = EARTH_RADIUS,
+mesh = DGMultiMeshTriIcosahedron2D(dg;
     initial_refinement = initial_refinement_level)
 
 # Transform the initial condition to the proper set of conservative variables
@@ -44,7 +42,7 @@ semi = SemidiscretizationHyperbolic(mesh, equations, initial_condition_transform
 # ODE solvers, callbacks etc.
 
 # Create ODE problem with time span from 0 to T
-ode = semidiscretize(semi, (0.0, 12 * SECONDS_PER_DAY))
+ode = semidiscretize(semi, (0.0, 0.052 * SECONDS_PER_DAY))
 
 # At the beginning of the main loop, the SummaryCallback prints a summary of the simulation 
 # setup and resets the timers
@@ -58,7 +56,7 @@ analysis_callback = AnalysisCallback(semi, interval = 10,
                                      uEltype = real(dg))
 
 # The SaveSolutionCallback allows to save the solution to a file in regular intervals
-save_solution = SaveSolutionCallback(interval = 10,
+save_solution = SaveSolutionCallback(interval = 1,
                                      solution_variables = contravariant2global)
 
 # The StepsizeCallback handles the re-calculation of the maximum Δt after each time step
