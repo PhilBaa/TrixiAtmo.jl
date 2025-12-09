@@ -10,9 +10,6 @@ function Trixi.compute_coefficients!(::Nothing, u, initial_condition, t,
         x_node = SVector(getindex.(md.xyzq, i))
         aux_node = aux_quad_values[i]
         u_values[i] = initial_condition(x_node, t, aux_node, equations)
-        if any(isnan, u_values[i])
-            error("Initial condition returned NaN at node $i with coordinates $x_node")
-        end
     end
 
     # multiplying by Pq computes the L2 projection
@@ -114,7 +111,7 @@ function Trixi.calc_interface_flux!(cache, surface_integral::SurfaceIntegralWeak
         normal = SVector(ntuple(k -> nrstJ[k][ref_index], NDIMS))
         normal = normal / norm(normal)
         
-        # If the unprojected normal vector belonged one of the triangular faces of the reference wedge,
+        # If the unprojected normal vector belonged to one of the triangular faces of the reference wedge,
         # the normalized projected normal vector consists of NaNs. In this case, we skip the flux computation,
         if any(isnan, normal)
             continue
@@ -129,7 +126,8 @@ function Trixi.calc_interface_flux!(cache, surface_integral::SurfaceIntegralWeak
         # the area element to get the correct fluxes per unit area,
         # making the surface integral independent of the thickness of the spherical shell.
         factor = 1 / norm_normal_transformed * Jf[idM] / area_elem
-        flux_face_values[idM] = surface_flux(uM, uP_transformed_to_M, auxM, auxM, normal, equations) * 0#* factor
+        error()
+        flux_face_values[idM] = surface_flux(uM, uP_transformed_to_M, auxM, auxM, normal, equations) * factor
     end
 end
 
@@ -162,12 +160,6 @@ function Trixi.calc_interface_flux!(cache, surface_integral::SurfaceIntegralWeak
         ref_index = mod(face_node_index - 1, Nfq) + 1
         normal = SVector(ntuple(k -> nrstJ[k][ref_index], NDIMS))
         normal = normal / norm(normal)
-        
-        # If the unprojected normal vector belonged one of the triangular faces of the reference wedge,
-        # the normalized projected normal vector consists of NaNs. In this case, we skip the flux computation,
-        if any(isnan, normal)
-            continue
-        end
 
         # Compute the norm of the normal vector transformed to physical coordinates
         basis = basis_contravariant(auxM, equations)

@@ -81,7 +81,6 @@ end
     aux_node = aux_values[i]
     element = (i-1) ÷ nnodes(dg) + 1
     local_node_index = (i - 1) % nnodes(dg) + 1
-    # @show local_node_index, element
     relative_vorticity = calc_vorticity_node(u, equations, dg, cache, local_node_index, element)
     h_s = bottom_topography(aux_node, equations)
     primitive_global = contravariant2global(cons2prim(u_node, aux_node, equations),

@@ -126,13 +126,13 @@ function init_auxiliary_node_variables!(aux_values, mesh::DGMultiMesh,
 
             # Covariant metric tensor components
             aux_node[14:16] = SVector(metric_covariant[1, 1],
-                                                          metric_covariant[1, 2],
-                                                          metric_covariant[2, 2])
+                                      metric_covariant[1, 2],
+                                      metric_covariant[2, 2])
 
             # Contravariant metric tensor components
             aux_node[17:19] = SVector(metric_contravariant[1, 1],
-                                                          metric_contravariant[1, 2],
-                                                          metric_contravariant[2, 2])
+                                      metric_contravariant[1, 2],
+                                      metric_contravariant[2, 2])
             # Bottom topography
             if !isnothing(bottom_topography)
                 x_node = map(coords -> coords[i, element], xyz)
