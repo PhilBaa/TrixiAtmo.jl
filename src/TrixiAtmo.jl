@@ -78,12 +78,8 @@ export source_terms_lagrange_multiplier, clean_solution_lagrange_multiplier!
 
 export cons2prim_and_vorticity, contravariant2global
 
-<<<<<<< HEAD
 export P4estMeshCubedSphere2D, P4estMeshQuadIcosahedron2D,
        DGMultiMeshTriIcosahedron2D, DGMultiMeshPrismIcosahedron,
-=======
-export P4estMeshCubedSphere2D, P4estMeshQuadIcosahedron2D, DGMultiMeshPrismIcosahedron,
->>>>>>> b5deffc (Implemented covariant advection in DGMulti and added Icosahedron Mesh)
        MetricTermsCrossProduct, MetricTermsInvariantCurl, MetricTermsCovariantSphere,
        ChristoffelSymbolsAutodiff, ChristoffelSymbolsCollocationDerivative
 
