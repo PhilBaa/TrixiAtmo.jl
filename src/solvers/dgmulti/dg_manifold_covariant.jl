@@ -83,56 +83,6 @@ function Trixi.calc_volume_integral!(du, u, mesh::DGMultiMesh{NDIMS_AMBIENT, <:T
     end
 end
 
-# Calculate flux at interface by passing auxiliary variables to the surface flux function
-function Trixi.calc_interface_flux!(cache, surface_integral::SurfaceIntegralWeakForm,
-                                    mesh::DGMultiMesh,
-                                    have_nonconservative_terms::False,
-                                    equations::AbstractCovariantEquations{NDIMS},
-                                    dg::DGMulti{NDIMS_AMBIENT, <:Wedge}) where {NDIMS_AMBIENT, NDIMS}
-    @unpack surface_flux = surface_integral
-    md = mesh.md
-    rd = dg.basis
-    @unpack mapM, mapP, Jf = md
-    @unpack nrstJ, Nfq = rd
-    @unpack u_face_values, flux_face_values, aux_face_values = cache
-    Trixi.@threaded for face_node_index in Trixi.each_face_node_global(mesh, dg, cache)
-
-        # inner (idM -> minus) and outer (idP -> plus) indices
-        idM, idP = mapM[face_node_index], mapP[face_node_index]
-        uM = u_face_values[idM]
-        uP = u_face_values[idP]
-        auxM = aux_face_values[idM]
-        auxP = aux_face_values[idP]
-        # Transform uP to the same coordinate system as uM
-        uP_global = contravariant2global(uP, auxP, equations)
-        uP_transformed_to_M = global2contravariant(uP_global, auxM, equations)
-        
-        # Compute ref_index from face_node_index in order to access covariant normal vector
-        # in reference element coordinates. We only take the first NDIMS components, projecting
-        # the normal vector onto the (reference) tangent space of the manifold, possibly yielding a zero vector.
-        ref_index = mod(face_node_index - 1, Nfq) + 1
-        normal = SVector(ntuple(k -> nrstJ[k][ref_index], NDIMS))
-        normal = normal / norm(normal)
-        
-        # If the unprojected normal vector belonged one of the triangular faces of the reference wedge,
-        # the normalized projected normal vector consists of NaNs. In this case, we skip the flux computation,
-        if any(isnan, normal)
-            continue
-        end
-
-        # Compute the norm of the normal vector transformed to physical coordinates
-        basis = basis_contravariant(auxM, equations)
-        norm_normal_transformed = norm(transpose(basis) * normal)
-        area_elem = area_element(auxM, equations)
-
-        # Scale the fluxes by inverse norm of transformed normal vector and
-        # the area element to get the correct fluxes per unit area,
-        # making the surface integral independent of the thickness of the spherical shell.
-        factor = 1 / norm_normal_transformed * Jf[idM] / area_elem
-        flux_face_values[idM] = surface_flux(uM, uP_transformed_to_M, auxM, auxM, normal, equations) * 0#* factor
-    end
-end
-
 function Trixi.calc_interface_flux!(cache, surface_integral::SurfaceIntegralWeakForm,
                                     mesh::DGMultiMesh,
                                     have_nonconservative_terms::False,
@@ -161,23 +111,7 @@ function Trixi.calc_interface_flux!(cache, surface_integral::SurfaceIntegralWeak
         # the normal vector onto the (reference) tangent space of the manifold, possibly yielding a zero vector.
         ref_index = mod(face_node_index - 1, Nfq) + 1
         normal = SVector(ntuple(k -> nrstJ[k][ref_index], NDIMS))
-        normal = normal / norm(normal)
-        
-        # If the unprojected normal vector belonged one of the triangular faces of the reference wedge,
-        # the normalized projected normal vector consists of NaNs. In this case, we skip the flux computation,
-        if any(isnan, normal)
-            continue
-        end
 
-        # Compute the norm of the normal vector transformed to physical coordinates
-        basis = basis_contravariant(auxM, equations)
-        norm_normal_transformed = norm(transpose(basis) * normal)
-        area_elem = area_element(auxM, equations)
-
-        # Scale the fluxes by inverse norm of transformed normal vector and
-        # the area element to get the correct fluxes per unit area,
-        # making the surface integral independent of the thickness of the spherical shell.
-        factor = 1 / norm_normal_transformed * Jf[idM] / area_elem
-        flux_face_values[idM] = surface_flux(uM, uP_transformed_to_M, auxM, auxM, normal, equations) * factor
+        flux_face_values[idM] = surface_flux(uM, uP_transformed_to_M, auxM, auxM, normal, equations)
     end
 end

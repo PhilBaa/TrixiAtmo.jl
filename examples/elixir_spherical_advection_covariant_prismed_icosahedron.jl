@@ -16,7 +16,7 @@ equations = CovariantLinearAdvectionEquation2D(global_coordinate_system = Global
 ###############################################################################
 # Build DG solver.
 
-tensor_polydeg = 1
+tensor_polydeg = 2
 
 dg = DGMulti(element_type = Tri(),
              approximation_type = SBP(),
@@ -42,7 +42,7 @@ semi = SemidiscretizationHyperbolic(mesh, equations, initial_condition_transform
 # ODE solvers, callbacks etc.
 
 # Create ODE problem with time span from 0 to T
-ode = semidiscretize(semi, (0.0, 0.052 * SECONDS_PER_DAY))
+ode = semidiscretize(semi, (0.0, 12 * SECONDS_PER_DAY))
 
 # At the beginning of the main loop, the SummaryCallback prints a summary of the simulation 
 # setup and resets the timers
