@@ -222,9 +222,6 @@ end
     dv2dxi1 = dv1dxi2 = zero(eltype(u))
     for ii in eachnode(dg)
         index = (element - 1) * nnodes(dg) + ii
-        # @show nelements(dg, cache), nnodes(dg), nelements(dg, cache) * nnodes(dg)
-        # @show element, ii, index
-        # @show size(u[1, :]), index
         u_node_ii = u[:, index]
         aux_node_ii = aux_values[ii, element]
         vcov = metric_covariant(aux_node_ii, equations) *

@@ -10,9 +10,6 @@ function Trixi.compute_coefficients!(::Nothing, u, initial_condition, t,
         x_node = SVector(getindex.(md.xyzq, i))
         aux_node = aux_quad_values[i]
         u_values[i] = initial_condition(x_node, t, aux_node, equations)
-        if any(isnan, u_values[i])
-            error("Initial condition returned NaN at node $i with coordinates $x_node")
-        end
     end
 
     # multiplying by Pq computes the L2 projection
