@@ -59,7 +59,7 @@ save_solution = SaveSolutionCallback(interval = 300,
                                      solution_variables = cons2prim_and_vorticity)
 
 # The StepsizeCallback handles the re-calculation of the maximum Δt after each time step
-stepsize_callback = StepsizeCallback(cfl = 0.7)
+stepsize_callback = StepsizeCallback(cfl = 0.3)
 
 # Create a CallbackSet to collect all callbacks such that they can be passed to the ODE 
 # solver
