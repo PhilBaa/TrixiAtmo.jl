@@ -16,21 +16,19 @@ equations = CovariantShallowWaterEquations2D(EARTH_GRAVITATIONAL_ACCELERATION,
 ###############################################################################
 # Build DG solver.
 
-tensor_polydeg = (2, 1)
+polydeg = 2
 
-dg = DGMulti(element_type = Wedge(),
-             approximation_type = SBP(),
+dg = DGMulti(element_type = Tri(),
+             approximation_type = Polynomial(),
              surface_flux = flux_lax_friedrichs,
-             polydeg = tensor_polydeg)
+             polydeg = polydeg)
 
 
 ###############################################################################
 # Build mesh.
 
-mesh = DGMultiMeshPrismIcosahedron(dg;
-    inner_radius = 0.99 * EARTH_RADIUS,
-    outer_radius = EARTH_RADIUS,
-    initial_refinement = 3)
+mesh = DGMultiMeshTriIcosahedron2D(dg;
+    initial_refinement = 4)
 
 # Transform the initial condition to the proper set of conservative variables
 initial_condition_transformed = transform_initial_condition(initial_condition, equations)
@@ -51,17 +49,17 @@ summary_callback = SummaryCallback()
 
 # The AnalysisCallback allows to analyse the solution in regular intervals and prints the 
 # results
-analysis_callback = AnalysisCallback(semi, interval = 10,
+analysis_callback = AnalysisCallback(semi, interval = 100,
                                      save_analysis = true,
                                      extra_analysis_errors = (:conservation_error,),
                                      uEltype = real(dg))
 
 # The SaveSolutionCallback allows to save the solution to a file in regular intervals
-save_solution = SaveSolutionCallback(interval = 1,
+save_solution = SaveSolutionCallback(interval = 300,
                                      solution_variables = cons2prim_and_vorticity)
 
 # The StepsizeCallback handles the re-calculation of the maximum Δt after each time step
-stepsize_callback = StepsizeCallback(cfl = 0.7)
+stepsize_callback = StepsizeCallback(cfl = 0.3)
 
 # Create a CallbackSet to collect all callbacks such that they can be passed to the ODE 
 # solver

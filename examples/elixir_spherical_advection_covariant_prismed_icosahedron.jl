@@ -19,7 +19,7 @@ equations = CovariantLinearAdvectionEquation2D(global_coordinate_system = Global
 tensor_polydeg = 2
 
 dg = DGMulti(element_type = Tri(),
-             approximation_type = SBP(),
+             approximation_type = Polynomial(),
              surface_flux = flux_lax_friedrichs,
              polydeg = tensor_polydeg)
 
@@ -27,7 +27,7 @@ dg = DGMulti(element_type = Tri(),
 ###############################################################################
 # Build mesh.
 
-initial_refinement_level = 3
+initial_refinement_level = 4
 
 mesh = DGMultiMeshTriIcosahedron2D(dg;
     initial_refinement = initial_refinement_level)
@@ -56,7 +56,7 @@ analysis_callback = AnalysisCallback(semi, interval = 10,
                                      uEltype = real(dg))
 
 # The SaveSolutionCallback allows to save the solution to a file in regular intervals
-save_solution = SaveSolutionCallback(interval = 1,
+save_solution = SaveSolutionCallback(interval = 100,
                                      solution_variables = contravariant2global)
 
 # The StepsizeCallback handles the re-calculation of the maximum Δt after each time step
@@ -73,4 +73,4 @@ callbacks = CallbackSet(summary_callback, analysis_callback, save_solution,
 # OrdinaryDiffEq's `solve` method evolves the solution in time and executes the passed 
 # callbacks
 sol = solve(ode, CarpenterKennedy2N54(williamson_condition = false),
-            dt = 1.0, save_everystep = true, callback = callbacks)
+            dt = 1.0 , save_everystep = true, callback = callbacks)
