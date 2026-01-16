@@ -22,13 +22,12 @@ function Trixi.calc_sources!(du, u, t, source_terms,
     rd = dg.basis
     md = mesh.md
     @unpack Pq = rd
-    @unpack u_values, aux_values, local_values_threaded = cache
+    @unpack u_values, aux_quad_values, local_values_threaded = cache
     Trixi.@threaded for e in Trixi.eachelement(mesh, dg, cache)
         source_values = local_values_threaded[Threads.threadid()]
 
         u_e = view(u_values, :, e) # u_values should already be computed from volume integral
-        aux_e = view(aux_values, :, e)
-        #TODO: interpolate with Vq
+        aux_e = view(aux_quad_values, :, e)
 
         for i in Trixi.each_quad_node(mesh, dg, cache)
             source_values[i] = source_terms(u_e[i], SVector(getindex.(md.xyzq, i, e)),
@@ -55,8 +54,6 @@ function Trixi.calc_volume_integral!(du, u, mesh::DGMultiMesh{NDIMS_AMBIENT, <:T
     md = mesh.md
     (; weak_differentiation_matrices, u_values, aux_quad_values, local_values_threaded) = cache
 
-    Jq = rd.Vq * md.J
-
     # interpolate to quadrature points
     Trixi.apply_to_each_field(Trixi.mul_by!(rd.Vq), u_values, u)
 
@@ -67,11 +64,7 @@ function Trixi.calc_volume_integral!(du, u, mesh::DGMultiMesh{NDIMS_AMBIENT, <:T
                 u_node = u_values[j, e]
                 aux_node = aux_quad_values[j, e]
                 area_elem = area_element(aux_node, equations)
-                J_node = Jq[j, e]
-                # Rescale the flux, such that the volume integral becomes independent of the thickness
-                # of the spherical shell. We compute that thickness by taking the ratio of the element's
-                # volume and the area element. 
-                flux_values[j] = flux(u_node, aux_node, i, equations)# * (J_node / area_elem)
+                flux_values[j] = flux(u_node, aux_node, i, equations)
             end
 
             Trixi.apply_to_each_field(Trixi.mul_by_accum!(weak_differentiation_matrices[i]),

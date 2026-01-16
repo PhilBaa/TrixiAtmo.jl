@@ -178,11 +178,8 @@ function calc_christoffel_symbols!(aux_values, mesh::DGMultiMesh,
                                    element)
     rd = dg.basis
     (; Vq, Drst) = rd
-
-    # Compute differentiation matrices for ξ¹ (s) and ξ² (t)
-    # TODO: This is probably wrong
-    # Dsq, Dtq = map(D -> Vq * D, Drst[2:3])
-    Dsq, Dtq = map(D -> D, Drst[1:2])
+    Dr, Ds = Drst
+    Dsq, Dtq = Dr, Ds
 
     for i in 1:Trixi.nnodes(dg)
 
