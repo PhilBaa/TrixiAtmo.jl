@@ -7,6 +7,27 @@ const EARTH_GRAVITATIONAL_ACCELERATION = 9.80616  # m/s²
 const EARTH_ROTATION_RATE = 7.292e-5  # rad/s
 const SECONDS_PER_DAY = 8.64e4
 
+"""
+    initial_condition_convergence_test(x, t, equations::LinearScalarAdvectionEquation2D)
+
+A smooth initial condition used for convergence tests.
+"""
+function initial_condition_flat(x, t, equations)
+    # Store translated coordinate for easy use of exact solution
+    RealT = eltype(x)
+    vx, vy, vz = 1.0, 1.0, 0.0
+    v = SVector(vx, vy, vz)
+    x_trans = x - v * t
+
+    c = 1
+    A = 0.5f0
+    L = 2
+    f = 1.0f0 / L
+    omega = 2 * convert(RealT, pi) * f
+    scalar = exp(- (norm(x_trans - SVector(-0.5f0, -0.5f0, 0.0f0))^2) / (2 * (0.1f0)^2))
+    return SVector(scalar, vx, vy, vz)
+end
+
 @doc raw"""
     initial_condition_gaussian(x, t, equations)
 

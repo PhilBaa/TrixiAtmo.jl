@@ -163,6 +163,9 @@ end
               (-v1 + v2)
     dxedxi2 = 0.5f0 *
               (-v1 + v3)
+    
+    return SMatrix{3, 2}(dxedxi1[1], dxedxi1[2], dxedxi1[3],
+                         dxedxi2[1], dxedxi2[2], dxedxi2[3])
 
     # Use product/quotient rule on the projection
     norm_xe = norm(xe)

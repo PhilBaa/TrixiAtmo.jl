@@ -45,7 +45,7 @@ function Trixi.calc_sources!(du, u, t, source_term::Nothing,
 end
 
 # version for covariant equations on DGMultiMeshes
-function Trixi.calc_volume_integral!(du, u, mesh::DGMultiMesh{NDIMS_AMBIENT, <:Trixi.NonAffine},
+function Trixi.calc_volume_integral!(du, u, mesh::DGMultiMesh{NDIMS_AMBIENT, <:Any},#<:Trixi.NonAffine},
                                have_nonconservative_terms::False,
                                equations::AbstractCovariantEquations{NDIMS},
                                volume_integral::VolumeIntegralWeakForm, dg::DGMulti,
