@@ -82,7 +82,6 @@ function DGMultiMeshPrismIcosahedron(dg::DGMulti{NDIMS};
     return DGMultiMesh(dg, Trixi.GeometricTermsType(Trixi.Curved(), dg), md, boundary_faces)
 end
 
-<<<<<<< HEAD
 function DGMultiMeshTriIcosahedron2D(dg::DGMulti{NDIMS};
     initial_refinement = 3,
     is_on_boundary = nothing) where {NDIMS}
@@ -164,8 +163,6 @@ function DGMultiMeshTriIcosahedron2D(dg::DGMulti{NDIMS};
 end
 
 
-=======
->>>>>>> b5deffc (Implemented covariant advection in DGMulti and added Icosahedron Mesh)
 # We use a local numbering to obtain the triangle vertices of each triangular face
 #
 # Fig: Local quad vertex numbering for a triangular face (corner vertices of the triangular face in parenthesis)
@@ -180,11 +177,7 @@ end
 #               /              \
 #              /                \
 #            6/                 4\
-<<<<<<< HEAD
 #            /⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺\
-=======
-#            /⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺\
->>>>>>> b5deffc (Implemented covariant advection in DGMulti and added Icosahedron Mesh)
 #           / \                 /  \
 #          /   \               /    \
 #         /     \             /      \
