@@ -1,12 +1,7 @@
 # Constructs cache variables including auxiliary variables for covariant equations and DGMultiMeshes
 function Trixi.create_cache(mesh::DGMultiMesh{NDIMS}, equations::AbstractCovariantEquations, dg::Trixi.DGMultiWeakForm,
-<<<<<<< HEAD
                             RealT, metric_terms, auxiliary_field,
                             uEltype) where {NDIMS}
-=======
-                            metric_terms, auxiliary_field, RealT,
-                      uEltype) where {NDIMS}
->>>>>>> b5deffc (Implemented covariant advection in DGMulti and added Icosahedron Mesh)
     rd = dg.basis
     md = mesh.md
 
@@ -28,11 +23,7 @@ function Trixi.create_cache(mesh::DGMultiMesh{NDIMS}, equations::AbstractCovaria
     aux_face_values = Trixi.allocate_nested_array(uEltype, naux, size(md.xf), dg)
     
     if typeof(rd.approximation_type) <:
-<<<<<<< HEAD
        Union{SBP, TensorProductWedgeSBP, Trixi.AbstractNonperiodicDerivativeOperator}
-=======
-       Union{SBP, Trixi.AbstractNonperiodicDerivativeOperator}
->>>>>>> b5deffc (Implemented covariant advection in DGMulti and added Icosahedron Mesh)
         lift_scalings = rd.wf ./ rd.wq[rd.Fmask] # lift scalings for diag-norm SBP operators
     else
         lift_scalings = nothing
@@ -46,19 +37,11 @@ function Trixi.create_cache(mesh::DGMultiMesh{NDIMS}, equations::AbstractCovaria
     # For affine meshes, we just access one element of this interpolated data.
     dxidxhatj = map(x -> rd.Vq * x, md.rstxyzJ)
 
-<<<<<<< HEAD
     init_auxiliary_node_variables!(aux_values, aux_quad_values, aux_face_values, mesh, equations, dg, auxiliary_field)
 
     # Interpolate auxiliary variables to quadrature and face points
     # Trixi.apply_to_each_field(Trixi.mul_by!(rd.Vq), aux_quad_values, aux_values)
     # Trixi.apply_to_each_field(Trixi.mul_by!(rd.Vf), aux_face_values, aux_values)
-=======
-    init_auxiliary_node_variables!(aux_values, mesh, equations, dg, auxiliary_field)
-
-    # Interpolate auxiliary variables to quadrature and face points
-    Trixi.apply_to_each_field(Trixi.mul_by!(rd.Vq), aux_quad_values, aux_values)
-    Trixi.apply_to_each_field(Trixi.mul_by!(rd.Vf), aux_face_values, aux_values)
->>>>>>> b5deffc (Implemented covariant advection in DGMulti and added Icosahedron Mesh)
 
 
     # interpolate J to quadrature points for weight-adjusted DG (WADG)
@@ -79,7 +62,4 @@ end
 
 include("containers_manifold_covariant.jl")
 include("dg_manifold_covariant.jl")
-<<<<<<< HEAD
 include("flux_differencing_covariant.jl")
-=======
->>>>>>> b5deffc (Implemented covariant advection in DGMulti and added Icosahedron Mesh)
