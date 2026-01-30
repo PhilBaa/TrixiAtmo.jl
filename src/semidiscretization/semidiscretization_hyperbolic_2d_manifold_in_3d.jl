@@ -53,8 +53,8 @@ function Trixi.SemidiscretizationHyperbolic(mesh::DGMultiMesh,
                                             metric_terms = MetricTermsCrossProduct(),
                                             auxiliary_field = nothing)
     cache = (;
-             Trixi.create_cache(mesh, equations, solver, RealT, metric_terms,
-                                auxiliary_field, uEltype)..., initial_cache...)
+             Trixi.create_cache(mesh, equations, solver, metric_terms,
+                                auxiliary_field, RealT, uEltype)..., initial_cache...)
     _boundary_conditions = Trixi.digest_boundary_conditions(boundary_conditions, mesh,
                                                             solver,
                                                             cache)
