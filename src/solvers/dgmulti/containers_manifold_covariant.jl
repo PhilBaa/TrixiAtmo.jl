@@ -11,12 +11,7 @@ function init_auxiliary_node_variables!(aux_values, mesh::DGMultiMesh,
     md = mesh.md
     n_aux = n_aux_node_vars(equations)
 
-    # Compute the radius of the sphere from the first element's fourth vertex, such that we can use it
-    # throughout the computation. We assume that each Wedge element's last three corner vertices lie
-    # on the simulated sphere.
-    VX, VY, VZ = map(coords -> transpose(coords[:, 1]) / V1', xyz)
-    v_outer = getindex.([VX, VY, VZ], 1)
-    radius = norm(v_outer)
+    radius = EARTH_RADIUS
 
     for element in eachelement(mesh, dg)
         # Compute corner vertices of the element

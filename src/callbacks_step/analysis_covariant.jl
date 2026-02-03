@@ -95,7 +95,7 @@ function Trixi.analyze(::typeof(Trixi.entropy_timederivative), du, u, t,
     # property of the L2 projection.
     dS_dt = zero(eltype(first(du)))
     for i in Base.OneTo(length(md.wJq))
-        dS_dt += dot(cons2entropy(u_values[i], aux_quad_values[i], equations), du_values[i]) * md.wJq[i]
+        dS_dt += dot(cons2entropy(u_values[i], aux_quad_values[i], equations), du_values[i])
     end
     return dS_dt
 end
@@ -169,5 +169,21 @@ function Trixi.calc_error_norms(func, u, t, analyzer,
     end
     total_volume = sum(md.wJq)
     return sqrt.(component_l2_errors ./ total_volume), component_linf_errors
+end
+
+function Trixi.integrate(func::Func, u, mesh::DGMultiMesh,
+                         equations::AbstractCovariantEquations, dg::DGMulti, cache; normalize = true) where {Func}
+    rd = dg.basis
+    md = mesh.md
+    @unpack u_values, aux_quad_values = cache
+
+    # interpolate u to quadrature points
+    Trixi.apply_to_each_field(Trixi.mul_by!(rd.Vq), u_values, u)
+
+    integral = sum(md.wJq .* func.(u_values, aux_quad_values, equations))
+    if normalize == true
+        integral /= sum(md.wJq)
+    end
+    return integral
 end
 end # @muladd

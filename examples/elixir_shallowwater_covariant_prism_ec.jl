@@ -21,15 +21,16 @@ polydeg = 2
 volume_flux = (flux_ec, flux_nonconservative_ec)
 surface_flux = (FluxPlusDissipation(flux_ec, DissipationLocalLaxFriedrichs()),
                 flux_nonconservative_surface_simplified)
-dg = DGMulti(polydeg = 2, element_type = Tri(), approximation_type = SBP(),
-                 surface_integral = SurfaceIntegralWeakForm(surface_flux),
-                 volume_integral = VolumeIntegralFluxDifferencing(volume_flux))
+
+dg = DGMulti(polydeg = polydeg, element_type = Tri(), approximation_type = SBP(),
+             surface_integral = SurfaceIntegralWeakForm(surface_flux),
+             volume_integral = VolumeIntegralFluxDifferencing(volume_flux))
 
 ###############################################################################
 # Build mesh.
 
 mesh = DGMultiMeshTriIcosahedron2D(dg;
-    initial_refinement = 4)
+    initial_refinement = 5)
 
 # Transform the initial condition to the proper set of conservative variables
 initial_condition_transformed = transform_initial_condition(initial_condition, equations)
@@ -53,6 +54,7 @@ summary_callback = SummaryCallback()
 analysis_callback = AnalysisCallback(semi, interval = 100,
                                      save_analysis = true,
                                      extra_analysis_errors = (:conservation_error,),
+                                     extra_analysis_integrals = (entropy,),
                                      uEltype = real(dg))
 
 # The SaveSolutionCallback allows to save the solution to a file in regular intervals

@@ -113,7 +113,7 @@ end
                       dim, u_local, aux_local, equations)
 
         # The final argument .5 scales the operator by 1/2 for the nonconservative terms.
-        half_Qi_skew = cache.Qrst_skew[dim] .* 0.5
+        half_Qi_skew = Trixi.LazyMatrixLinearCombo((cache.Qrst_skew[dim], ), (0.5, ))
         # False() indicates the flux is non-symmetric.
         Trixi.hadamard_sum!(fluxdiff_local, half_Qi_skew,
                       False(), flux_nonconservative,

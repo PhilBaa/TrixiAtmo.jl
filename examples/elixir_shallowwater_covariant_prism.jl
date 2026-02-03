@@ -28,7 +28,7 @@ dg = DGMulti(element_type = Tri(),
 # Build mesh.
 
 mesh = DGMultiMeshTriIcosahedron2D(dg;
-    initial_refinement = 4)
+    initial_refinement = 5)
 
 # Transform the initial condition to the proper set of conservative variables
 initial_condition_transformed = transform_initial_condition(initial_condition, equations)
@@ -52,6 +52,7 @@ summary_callback = SummaryCallback()
 analysis_callback = AnalysisCallback(semi, interval = 100,
                                      save_analysis = true,
                                      extra_analysis_errors = (:conservation_error,),
+                                     extra_analysis_integrals = (entropy,),
                                      uEltype = real(dg))
 
 # The SaveSolutionCallback allows to save the solution to a file in regular intervals

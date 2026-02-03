@@ -1,7 +1,7 @@
 # Constructs cache variables including auxiliary variables for covariant equations and DGMultiMeshes
-function Trixi.create_cache(mesh::DGMultiMesh{NDIMS}, equations::AbstractCovariantEquations, dg::Trixi.DGMultiWeakForm,
-                            RealT, metric_terms, auxiliary_field,
-                            uEltype) where {NDIMS}
+function Trixi.create_cache(mesh::DGMultiMesh{NDIMS}, equations::AbstractCovariantEquations,
+                            dg::Trixi.DGMultiWeakForm, metric_terms, auxiliary_field,
+                            RealT, uEltype) where {NDIMS}
     rd = dg.basis
     md = mesh.md
 
@@ -37,11 +37,11 @@ function Trixi.create_cache(mesh::DGMultiMesh{NDIMS}, equations::AbstractCovaria
     # For affine meshes, we just access one element of this interpolated data.
     dxidxhatj = map(x -> rd.Vq * x, md.rstxyzJ)
 
-    init_auxiliary_node_variables!(aux_values, aux_quad_values, aux_face_values, mesh, equations, dg, auxiliary_field)
+    init_auxiliary_node_variables!(aux_values, mesh, equations, dg, metric_terms, auxiliary_field)
 
     # Interpolate auxiliary variables to quadrature and face points
-    # Trixi.apply_to_each_field(Trixi.mul_by!(rd.Vq), aux_quad_values, aux_values)
-    # Trixi.apply_to_each_field(Trixi.mul_by!(rd.Vf), aux_face_values, aux_values)
+    Trixi.apply_to_each_field(Trixi.mul_by!(rd.Vq), aux_quad_values, aux_values)
+    Trixi.apply_to_each_field(Trixi.mul_by!(rd.Vf), aux_face_values, aux_values)
 
 
     # interpolate J to quadrature points for weight-adjusted DG (WADG)
