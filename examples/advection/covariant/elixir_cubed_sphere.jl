@@ -9,13 +9,13 @@ using OrdinaryDiffEqLowStorageRK, Trixi, TrixiAtmo
 ###############################################################################
 # Spatial discretization
 
-cells_per_dimension = (5, 5)
+cells_per_dimension = (1, 1)
 initial_condition = initial_condition_gaussian
 
 equations = CovariantLinearAdvectionEquation2D(global_coordinate_system = GlobalCartesianCoordinates())
 
 # Create DG solver with polynomial degree = p and a local Lax-Friedrichs flux
-solver = DGSEM(polydeg = 3, surface_flux = flux_lax_friedrichs,
+solver = DGSEM(polydeg = 1, surface_flux = flux_lax_friedrichs,
                volume_integral = VolumeIntegralWeakForm())
 
 # Create a 2D cubed sphere mesh the size of the Earth. For the covariant form to work 

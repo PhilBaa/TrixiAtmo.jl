@@ -53,10 +53,10 @@ function Trixi.calc_volume_integral!(du, u, mesh::DGMultiMesh,
         aux_local = view(aux_values, :, e)
 
         Trixi.local_flux_differencing!(fluxdiff_local, u_local, aux_local, e,
-                                 have_nonconservative_terms,
-                                 volume_integral.volume_flux,
-                                 Trixi.has_sparse_operators(dg),
-                                 mesh, equations, dg, cache)
+                                       have_nonconservative_terms,
+                                       volume_integral.volume_flux,
+                                       Trixi.has_sparse_operators(dg),
+                                       mesh, equations, dg, cache)
 
         for i in Trixi.each_quad_node(mesh, dg, cache)
             du[i, e] = du[i, e] + fluxdiff_local[i] * inv_wq[i]
@@ -97,6 +97,39 @@ end
         Trixi.hadamard_sum!(fluxdiff_local, Qi_skew,
                       True(), volume_flux,
                       dim, u_local, aux_local, equations)
+    end
+end
+
+# When the operators are sparse, we use the sum-factorization approach to
+# computing flux differencing.
+@inline function Trixi.local_flux_differencing!(fluxdiff_local, u_local, aux_local, element_index,
+                                                has_nonconservative_terms::False, volume_flux,
+                                                has_sparse_operators::True, mesh,
+                                                equations, dg, cache)
+    @unpack Qrst_skew = cache
+    for dim in 1:2
+        # There are two ways to write this flux differencing discretization on affine meshes.
+        #
+        # 1. Use numerical fluxes in Cartesian directions and sum up the discrete derivative
+        #    operators per coordinate direction accordingly.
+        # 2. Use discrete derivative operators per coordinate direction and corresponding
+        #    numerical fluxes in arbitrary (non-Cartesian) space directions.
+        #
+        # The first option makes it necessary to sum up the individual sparsity
+        # patterns of each reference coordinate direction. On tensor-product
+        # elements such as `Quad()` or `Hex()` elements, this increases the number of
+        # potentially expensive numerical flux evaluations by a factor of `ndims(mesh)`.
+        # Thus, we use the second option below (which basically corresponds to the
+        # well-known sum factorization on tensor product elements).
+        # Note that there is basically no difference for dense derivative operators.
+
+        # Is this a problem for covariant Quads????
+        Qi_skew = Qrst_skew[dim]
+
+        # True() indicates the flux is symmetric
+        Trixi.hadamard_sum!(fluxdiff_local, Qi_skew,
+                            True(), volume_flux,
+                            dim, u_local, aux_local, equations)
     end
 end
 

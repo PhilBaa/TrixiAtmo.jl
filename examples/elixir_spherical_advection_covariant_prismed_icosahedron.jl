@@ -16,20 +16,30 @@ equations = CovariantLinearAdvectionEquation2D(global_coordinate_system = Global
 ###############################################################################
 # Build DG solver.
 
-tensor_polydeg = 2
+polydeg = 1
 
-dg = DGMulti(element_type = Tri(),
+dg = DGMulti(element_type = Quad(),
              approximation_type = Polynomial(),
              surface_flux = flux_lax_friedrichs,
-             polydeg = tensor_polydeg)
+             polydeg = polydeg)
+
+volume_flux = flux_central
+surface_flux = flux_central
+
+dg = DGMulti(polydeg = polydeg, element_type = Quad(), approximation_type = SBP(),
+             surface_integral = SurfaceIntegralWeakForm(surface_flux),
+             volume_integral = VolumeIntegralFluxDifferencing(volume_flux))
 
 
 ###############################################################################
 # Build mesh.
 
-initial_refinement_level = 4
+initial_refinement_level = 0
 
-mesh = DGMultiMeshTriIcosahedron2D(dg;
+# mesh = DGMultiMeshTriIcosahedron2D(dg;
+#     initial_refinement = initial_refinement_level)
+
+mesh = DGMultiMeshCubedSphere2D(dg;
     initial_refinement = initial_refinement_level)
 
 # Transform the initial condition to the proper set of conservative variables
