@@ -75,16 +75,26 @@ function init_auxiliary_node_variables!(aux_values, mesh::DGMultiMesh,
                                         dg::DGMulti{<:Any, <:Quad},
                                         metric_terms, bottom_topography)
     rd = dg.basis
-    (; V1) = rd
+    (; rst) = rd
     (; xyz) = mesh.md
     md = mesh.md
     n_aux = n_aux_node_vars(equations)
 
     radius = EARTH_RADIUS
 
+    VMask = []
+
+    for corner in [(-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0), (1.0, 1.0)]
+        for j in 1:size(rst[1], 1)
+            r, s = rst[1][j], rst[2][j]
+            if (r, s) == corner
+                push!(VMask, j)
+            end
+        end                     
+    end
     for element in eachelement(mesh, dg)
         # Compute corner vertices of the element
-        VX, VY, VZ = map(coords -> transpose(coords[:, element]) / V1', xyz)
+        VX, VY, VZ = map(coords -> coords[VMask, element], xyz)
         v1, v2, v3, v4 = map(i -> getindex.([VX, VY, VZ], i), 1:4) #TODO: make nicer
 
         aux_node = Vector{eltype(aux_values[1, 1])}(undef, n_aux)

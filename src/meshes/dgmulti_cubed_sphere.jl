@@ -83,6 +83,7 @@ function DGMultiMeshCubedSphere2D(dg::DGMulti{NDIMS};
         end
     end
     md = MeshData(Vxyz, EToV, dg.basis)
+    # spherify_meshdata!(md, dg, EToV, Vxyz)
     norms = sqrt.(md.xyz[1].^2 .+ md.xyz[2].^2 .+ md.xyz[3].^2)
     md = @set md.xyz = map(c -> c ./ norms .* EARTH_RADIUS, md.xyz)
     norms = sqrt.(md.xyzq[1].^2 .+ md.xyzq[2].^2 .+ md.xyzq[3].^2)
@@ -92,6 +93,45 @@ function DGMultiMeshCubedSphere2D(dg::DGMulti{NDIMS};
     boundary_faces = StartUpDG.tag_boundary_faces(md, is_on_boundary)
     return DGMultiMesh(dg, Trixi.GeometricTermsType(Trixi.Curved(), dg), md, boundary_faces)
 end
+
+function spherify_meshdata!(md::MeshData, dg::DGMulti{NDIMS}, EToV, Vxyz) where {NDIMS}
+    rd = dg.basis
+    for e in 1:size(EToV, 1)
+        v1, v2, v3, v4 = ntuple(n -> SVector(ntuple(d -> Vxyz[d][EToV[e, n]], 3)), 4)
+        for j in 1:size(rd.rst[1], 1)
+            r, s = rd.rst[1][j], rd.rst[2][j]
+            # Bilinear mapping from reference square to physical space
+            u_node = local_mapping(r, s, v1, v2, v4, v3, EARTH_RADIUS)
+
+            for n in 1:3
+                md = @set md.xyz[n][j, e] = u_node[n]
+            end
+        end
+
+        for j in 1:size(rd.rstq[1], 1)
+            r, s = rd.rstq[1][j], rd.rstq[2][j]
+            # Bilinear mapping from reference square to physical space
+            u_node = local_mapping(r, s, v1, v2, v4, v3, EARTH_RADIUS)
+
+            for n in 1:3
+                md = @set md.xyzq[n][j, e] = u_node[n]
+            end
+        end
+
+        for j in 1:size(rd.rstf[1], 1)
+            r, s = rd.rstf[1][j], rd.rstf[2][j]
+            # Bilinear mapping from reference square to physical space
+            u_node = local_mapping(r, s, v1, v2, v4, v3, EARTH_RADIUS)
+
+            for n in 1:3
+                md = @set md.xyzf[n][j, e] = u_node[n]
+            end
+        end
+    end
+    return md
+end
+
+
 
 # Function to compute the vertices' coordinates of an icosahedron inscribed in a sphere of radius `radius`
 function calc_node_coordinates_cube_vertices(radius; RealT = Float64)
