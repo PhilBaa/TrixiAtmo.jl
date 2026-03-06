@@ -46,10 +46,10 @@ end
 
 # version for covariant equations on DGMultiMeshes
 function Trixi.calc_volume_integral!(du, u, mesh::DGMultiMesh{NDIMS_AMBIENT, <:Trixi.NonAffine},
-                               have_nonconservative_terms::False,
-                               equations::AbstractCovariantEquations{NDIMS},
-                               volume_integral::VolumeIntegralWeakForm, dg::DGMulti,
-                               cache) where {NDIMS_AMBIENT, NDIMS}
+                                     have_nonconservative_terms::False,
+                                     equations::AbstractCovariantEquations{NDIMS},
+                                     volume_integral::VolumeIntegralWeakForm, dg::DGMulti,
+                                     cache) where {NDIMS_AMBIENT, NDIMS}
     rd = dg.basis
     md = mesh.md
     (; weak_differentiation_matrices, u_values, aux_quad_values, local_values_threaded) = cache

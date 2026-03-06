@@ -83,13 +83,7 @@ function DGMultiMeshCubedSphere2D(dg::DGMulti{NDIMS};
         end
     end
     md = MeshData(Vxyz, EToV, dg.basis)
-    # spherify_meshdata!(md, dg, EToV, Vxyz)
-    norms = sqrt.(md.xyz[1].^2 .+ md.xyz[2].^2 .+ md.xyz[3].^2)
-    md = @set md.xyz = map(c -> c ./ norms .* EARTH_RADIUS, md.xyz)
-    norms = sqrt.(md.xyzq[1].^2 .+ md.xyzq[2].^2 .+ md.xyzq[3].^2)
-    md = @set md.xyzq = map(c -> c ./ norms .* EARTH_RADIUS, md.xyzq)
-    norms = sqrt.(md.xyzf[1].^2 .+ md.xyzf[2].^2 .+ md.xyzf[3].^2)
-    md = @set md.xyzf = map(c -> c ./ norms .* EARTH_RADIUS, md.xyzf)
+    md = spherify_meshdata!(md, dg, EToV, Vxyz)
     boundary_faces = StartUpDG.tag_boundary_faces(md, is_on_boundary)
     return DGMultiMesh(dg, Trixi.GeometricTermsType(Trixi.Curved(), dg), md, boundary_faces)
 end

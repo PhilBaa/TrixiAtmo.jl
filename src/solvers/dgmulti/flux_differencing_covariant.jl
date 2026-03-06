@@ -33,8 +33,10 @@ function Trixi.create_cache(mesh::DGMultiMesh, equations::AbstractCovariantEquat
     fluxdiff_local_threaded = [zeros(SVector{nvars, uEltype}, rd.Nq)
                                for _ in 1:Threads.nthreads()]
 
+    invJ = inv.(area_element.(aux_quad_values, equations))
+
     return (; md, Qrst_skew, dxidxhatj = md.rstxyzJ,
-            invJ = inv.(md.J), lift_scalings, inv_wq = inv.(rd.wq),
+            invJ = invJ, lift_scalings, inv_wq = inv.(rd.wq),
             u_values, u_face_values, flux_face_values,
             aux_values, aux_quad_values, aux_face_values,
             local_values_threaded, fluxdiff_local_threaded)
