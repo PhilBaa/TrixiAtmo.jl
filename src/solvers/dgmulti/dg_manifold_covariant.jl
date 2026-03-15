@@ -104,3 +104,47 @@ function Trixi.calc_interface_flux!(cache, surface_integral::SurfaceIntegralWeak
         flux_face_values[idM] = surface_flux(uM, uP_transformed_to_M, auxM, auxM, normal, equations)
     end
 end
+
+function Trixi.calc_interface_flux!(cache, surface_integral::SurfaceIntegralWeakForm,
+                                    mesh::DGMultiMesh,
+                                    have_nonconservative_terms::True,
+                                    equations::AbstractCovariantEquations{NDIMS},
+                                    dg::DGMulti) where {NDIMS}
+    flux_conservative, flux_nonconservative = surface_integral.surface_flux
+    md = mesh.md
+    rd = dg.basis
+    @unpack nrstJ, Nfq = rd
+    @unpack mapM, mapP = md
+    @unpack u_face_values, aux_face_values, flux_face_values = cache
+
+    Trixi.@threaded for face_node_index in Trixi.each_face_node_global(mesh, dg, cache)
+
+        # inner (idM -> minus) and outer (idP -> plus) indices
+        idM, idP = mapM[face_node_index], mapP[face_node_index]
+        uM = u_face_values[idM]
+        auxM = aux_face_values[idM]
+
+        # compute flux if node is not a boundary node
+        if idM != idP
+            uP = u_face_values[idP]
+            auxP = aux_face_values[idP]
+
+            uP_global = contravariant2global(uP, auxP, equations)
+            uP_transformed_to_M = global2contravariant(uP_global, auxM, equations)
+            
+            ref_index = mod(face_node_index - 1, Nfq) + 1
+            normal = SVector(ntuple(k -> nrstJ[k][ref_index], NDIMS))
+            conservative_part = flux_conservative(uM, uP_transformed_to_M, auxM, auxM, normal, equations)
+
+            # Two notes on the use of `flux_nonconservative`:
+            # 1. In contrast to other mesh types, only one nonconservative part needs to be
+            #    computed since we loop over the elements, not the unique interfaces.
+            nonconservative_part = flux_nonconservative(uM, uP_transformed_to_M, auxM, auxM, normal, equations)
+            # The factor 0.5 is necessary for the nonconservative fluxes based on the
+            # interpretation of global SBP operators.
+            flux_face_values[idM] = (conservative_part + 0.5 * nonconservative_part)
+        end
+    end
+
+    return nothing
+end
