@@ -3,12 +3,49 @@
 ###############################################################################
 
 using OrdinaryDiffEq, Trixi, TrixiAtmo
-using ForwardDiff
 
 ###############################################################################
 # Spatial discretization
 
-initial_condition = initial_condition_isolated_mountain
+@inline function initial_condition_smooth_mountain(x, t, equations)
+    RealT = eltype(x)
+    a = sqrt(x[1]^2 + x[2]^2 + x[3]^2)  # radius of the sphere
+    lat = asin(x[3] / a)
+    h_0 = 5960.0f0
+    v_0 = 20.0f0
+
+    # compute zonal and meridional components of the velocity
+    vlon, vlat = v_0 * cos(lat), zero(eltype(x))
+
+    # compute geopotential height 
+    h = h_0 -
+        1 / EARTH_GRAVITATIONAL_ACCELERATION *
+        (a * EARTH_ROTATION_RATE * v_0 + 0.5f0 * v_0^2) * (sin(lat))^2
+
+    # Convert primitive variables from spherical coordinates to the chosen global 
+    # coordinate system, which depends on the equation type
+    return TrixiAtmo.spherical2global(SVector(h, vlon, vlat, zero(RealT),
+                                    bottom_topography_smooth_mountain(x)), x,
+                            equations)
+end
+
+# Bottom topography function to pass as auxiliary_field keyword argument in constructor for 
+# SemidiscretizationHyperbolic, used with initial_condition_smooth_mountain
+@inline function bottom_topography_smooth_mountain(x)
+    RealT = eltype(x)
+    a = sqrt(x[1]^2 + x[2]^2 + x[3]^2)  # radius of the sphere
+    lon, lat = atan(x[2], x[1]), asin(x[3] / a)
+
+    # Position and height of mountain, noting that latitude is λ = -π/2 and not λ = 3π/2 
+    # because atan(y,x) is in [-π, π]
+    lon_0, lat_0 = convert(RealT, -π / 2), convert(RealT, π / 6)
+    b_0 = 2000.0f0
+
+    R = convert(RealT, π / 9)
+    return b_0 * exp(-((lon - lon_0)^2 + (lat - lat_0)^2) / R^2)
+end
+
+initial_condition = initial_condition_smooth_mountain
 
 equations = CovariantShallowWaterEquations2D(EARTH_GRAVITATIONAL_ACCELERATION,
                                              EARTH_ROTATION_RATE,
@@ -74,7 +111,7 @@ end
 # A semidiscretization collects data structures and functions for the spatial discretization
 semi = SemidiscretizationHyperbolic(mesh, equations, initial_condition_transformed, dg,
                                     source_terms = source_terms_geometric_coriolis_bottom_topography,
-                                    auxiliary_field = bottom_topography_isolated_mountain)
+                                    auxiliary_field = bottom_topography_smooth_mountain)
 
 ###############################################################################
 # ODE solvers, callbacks etc.
