@@ -163,6 +163,7 @@ end
     nvars_metric_contravariant = NDIMS * (NDIMS + 1) ÷ 2
     nvars_bottom_topography = 1
     nvars_christoffel = NDIMS * NDIMS * (NDIMS + 1) ÷ 2
+    nvars_bottom_topography_derivatives = NDIMS
 
     return nvars_basis_covariant +
            nvars_basis_contravariant +
@@ -170,7 +171,8 @@ end
            nvars_metric_covariant +
            nvars_metric_contravariant +
            nvars_bottom_topography +
-           nvars_christoffel
+           nvars_christoffel +
+           nvars_bottom_topography_derivatives
 end
 
 # Return auxiliary variable names for 2D covariant form. Note that e₁, e₂, e₃ are the
@@ -201,7 +203,9 @@ end
             "christoffel_symbols[1][2,2]",  # Γ¹₂₂
             "christoffel_symbols[2][1,1]",  # Γ²₁₁
             "christoffel_symbols[2][1,2]",  # Γ²₁₂ = Γ²₂₁
-            "christoffel_symbols[2][2,2]")  # Γ²₂₂
+            "christoffel_symbols[2][2,2]",  # Γ²₂₂
+            "bottom_topography_derivatives[1]",  # ∂hₛ/∂r
+            "bottom_topography_derivatives[2]")  # ∂hₛ/∂s
 end
 
 # Extract the covariant basis vectors a_i from the auxiliary variables as a matrix A, 
@@ -247,6 +251,11 @@ end
 @inline function christoffel_symbols(aux_vars, ::AbstractCovariantEquations{2})
     return (SMatrix{2, 2}(aux_vars[21], aux_vars[22], aux_vars[22], aux_vars[23]),
             SMatrix{2, 2}(aux_vars[24], aux_vars[25], aux_vars[25], aux_vars[26]))
+end
+
+# Extract the derivatives of the bottom topography ∂hₛ/∂r and ∂hₛ/∂s from the auxiliary variables
+@inline function bottom_topography_derivatives(aux_vars, ::AbstractCovariantEquations{2})
+    return SVector{2}(aux_vars[27], aux_vars[28])
 end
 
 # Numerical flux plus dissipation for abstract covariant equations as a function of the 

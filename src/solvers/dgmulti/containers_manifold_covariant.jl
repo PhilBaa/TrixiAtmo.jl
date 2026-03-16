@@ -82,6 +82,7 @@ function init_auxiliary_node_variables!(aux_values, mesh::DGMultiMesh,
         end
         # Christoffel symbols of the second kind (aux_values[21:26, :, :, element])
         calc_christoffel_symbols!(aux_values, mesh, equations, dg, element)
+        calc_bottom_topography_derivatives!(aux_values, mesh, equations, dg, element)
     end
 
     return nothing
@@ -115,7 +116,7 @@ function calc_christoffel_symbols!(aux_values, mesh::DGMultiMesh,
                                    equations::AbstractCovariantEquations{2, 3}, dg,
                                    element)
     rd = dg.basis
-    (; Vq, Drst) = rd
+    (; Drst) = rd
     Dr, Ds = Drst
 
     for i in 1:Trixi.nnodes(dg)
@@ -171,6 +172,30 @@ function calc_christoffel_symbols!(aux_values, mesh::DGMultiMesh,
         aux_node[26] = Gcon[2, 1] * christoffel_firstkind_1[2, 2] +
                                            Gcon[2, 2] * christoffel_firstkind_2[2, 2]
 
+        aux_values[i, element] = SVector{n_aux_node_vars(equations)}(aux_node)
+    end
+end
+
+function calc_bottom_topography_derivatives!(aux_values, mesh::DGMultiMesh,
+                                             equations::AbstractCovariantEquations{2, 3}, dg,
+                                             element)
+    rd = dg.basis
+    (; Drst) = rd
+    Dr, Ds = Drst
+
+    for i in 1:Trixi.nnodes(dg)
+        dbottomdxi1 = zero(eltype(aux_values[i, element]))
+        dbottomdxi2 = zero(eltype(aux_values[i, element]))
+        for jj in 1:nnodes(dg)
+            aux_node_jj = aux_values[jj, element]
+            bottom_jj = aux_node_jj[20]  # bottom topography is the 20th auxiliary variable
+            dbottomdxi1 += Dr[i, jj] * bottom_jj
+            dbottomdxi2 += Ds[i, jj] * bottom_jj
+        end
+
+        aux_node = Vector(aux_values[i, element])
+        aux_node[27] = dbottomdxi1
+        aux_node[28] = dbottomdxi2
         aux_values[i, element] = SVector{n_aux_node_vars(equations)}(aux_node)
     end
 end
