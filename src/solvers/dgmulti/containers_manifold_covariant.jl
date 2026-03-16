@@ -75,6 +75,9 @@ function init_auxiliary_node_variables!(aux_values, mesh::DGMultiMesh,
             if !isnothing(bottom_topography)
                 x_node = map(coords -> coords[i, element], xyz)
                 aux_node[20] = bottom_topography(x_node)
+                bt = (r, s) -> bottom_topography(local_mapping(r, s, v1, v2, v3, radius))
+                aux_node[27] = derivative(r -> bt(r, rd.rst[2][i]), rd.rst[1][i])
+                aux_node[28] = derivative(s -> bt(rd.rst[1][i], s), rd.rst[2][i])
             else
                 aux_node[20] = zero(eltype(aux_node))
             end
