@@ -1,7 +1,7 @@
-function DGMultiMeshPrismIcosahedron3D(dg::DGMulti{NDIMS, <:Wedge}, inner_radius, outer_radius;
+function DGMultiMeshPrismIcosahedron3D(dg::DGMulti{3, <:Wedge}, inner_radius, outer_radius;
                                        horizontal_initial_refinement = 3,
                                        vertical_layers = 5,
-                                       is_on_boundary = nothing) where {NDIMS}
+                                       is_on_boundary = nothing)
     NDIMS_AMBIENT = 3
 
     radius = 1.0
@@ -88,7 +88,6 @@ function DGMultiMeshPrismIcosahedron3D(dg::DGMulti{NDIMS, <:Wedge}, inner_radius
         @show Vxyz[1]
         @show size(Vxyz[1])
     end
-
     md = StartUpDG.MeshData(Vxyz, EToV, dg.basis)
     boundary_faces = StartUpDG.tag_boundary_faces(md, is_on_boundary)
     return DGMultiMesh(dg, Trixi.GeometricTermsType(Trixi.Curved(), dg), md, boundary_faces)
