@@ -7,11 +7,11 @@ using OrdinaryDiffEqLowStorageRK, Trixi, TrixiAtmo
 ###############################################################################
 # Spatial discretization
 
-initial_condition = initial_condition_barotropic_instability
+initial_condition = initial_condition_baroclinic_instability
 
-equations = CovariantShallowWaterEquations2D(EARTH_GRAVITATIONAL_ACCELERATION,
-                                             EARTH_ROTATION_RATE,
-                                             global_coordinate_system = GlobalCartesianCoordinates())
+equations = CovariantEulerEquations(EARTH_GRAVITATIONAL_ACCELERATION,
+                                    EARTH_ROTATION_RATE,
+                                    global_coordinate_system = GlobalCartesianCoordinates())
 
 ###############################################################################
 # Build DG solver.
@@ -26,11 +26,14 @@ dg = DGMulti(element_type = Wedge(),
 ###############################################################################
 # Build mesh.
 
-horizontal_initial_refinement= 0
+horizontal_initial_refinement = 3
+vertical_layers = 3
 
 mesh = DGMultiMeshPrismIcosahedron3D(dg, 0.5 * EARTH_RADIUS, EARTH_RADIUS;
                                      horizontal_initial_refinement = horizontal_initial_refinement,
-                                     vertical_layers = 1)
+                                     vertical_layers = vertical_layers)
+
+initial_condition_transformed = transform_initial_condition(initial_condition, equations)
 
 using StartUpDG: export_to_vtk
 md = mesh.md
