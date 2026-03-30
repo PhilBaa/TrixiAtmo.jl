@@ -2,69 +2,17 @@
 #! format: noindent
 
 @doc raw"""
-    CovariantShallowWaterEquations2D{GlobalCoordinateSystem} <:  
-        AbstractCovariantEquations{2, 3, GlobalCoordinateSystem, 3}
+    CovariantEulerEquations{GlobalCoordinateSystem} <:  
+        AbstractCovariantEquations{3, 3, GlobalCoordinateSystem, 5}
 
-Denoting the [covariant derivative](https://en.wikipedia.org/wiki/Covariant_derivative) by 
-$\nabla_j$ and summing over repeated indices, the shallow water equations can be expressed 
-on a two-dimensional surface in three-dimensional ambient space as
-```math
-\begin{aligned}
-\partial_t h + \nabla_j (hv^j) &= 0,\\
-\partial_t (hv^i) + \nabla_j \tau^{ij} + gh G^{ij}\partial_j b
-&= -fJ G^{ij}\varepsilon_{jk} hv^k,
-\end{aligned}
-```
-where $h$ is the geopotential height (equal to the total geopotential height $H$ for zero
-bottom topography), $v^i$ and $G^{ij}$ are the contravariant velocity and metric tensor
-components, $g$ is the gravitational acceleration, $b$ is the bottom topography, $f$ is the 
-Coriolis parameter, $J$ is the area element, $\varepsilon$ is the Levi-Civita symbol, and 
-$\partial_j$ is used as a shorthand for $\partial / \partial \xi^j$. The contravariant 
-momentum flux tensor components are given by
-```math
-\tau^{ij} = hv^i v^j + \frac{1}{2}G^{ij}gh^2.
-```
-The covariant shallow water equations with constant bottom topography can be formulated on 
-the reference element as a system of conservation laws with a source term (implemented in 
-the exported function `source_terms_geometric_coriolis`), as given by
-```math
-J \frac{\partial}{\partial t}
-\left[\begin{array}{c} h \\ hv^1 \\ hv^2 \end{array}\right] 
-+
-\frac{\partial}{\partial \xi^1} 
-\left[\begin{array}{c} J h v^1 \\ J \tau^{11} \\ J \tau^{12} \end{array}\right]
-+ 
-\frac{\partial}{\partial \xi^2} 
-\left[\begin{array}{c} J h v^2 \\ J \tau^{21} \\ J \tau^{22}  \end{array}\right] 
-= J \left[\begin{array}{c} 0 \\ 
--\Gamma^1_{jk}\tau^{jk} - f J \big(G^{12}hv^1 - G^{11}hv^2\big) \\ 
--\Gamma^2_{jk}\tau^{jk} - f J \big(G^{22}hv^1 - G^{21}hv^2\big)
- \end{array}\right].
-```
-Note that the geometric contribution to the source term involves the Christoffel symbols of
-the second kind, which can been expressed in terms of the covariant metric tensor 
-components $G_{ij}$ as 
-```math
-\Gamma_{jk}^i = 
-\frac{1}{2}G^{il}\big(\partial_j G_{kl} + \partial_k G_{jl} - \partial_l G_{jk}\big).
-```
+
 ## References
-- M. Baldauf (2020). Discontinuous Galerkin solver for the shallow-water equations in
-  covariant form on the sphere and the ellipsoid. Journal of Computational Physics 
-  410:109384. [DOI: 10.1016/j.jcp.2020.109384](https://doi.org/10.1016/j.jcp.2020.109384) 
-- L. Bao, R. D. Nair, and H. M. Tufo (2014). A mass and momentum flux-form high-order
-  discontinuous Galerkin shallow water model on the cubed-sphere. A mass and momentum 
-  flux-form high-order discontinuous Galerkin shallow water model on the cubed-sphere. 
-  Journal of Computational Physics 271:224-243. 
-  [DOI: 10.1016/j.jcp.2013.11.033](https://doi.org/10.1016/j.jcp.2013.11.033)
-
-!!! note
-    When solving problems with variable bottom topography as well as when using
-    entropy-stable schemes, [SplitCovariantShallowWaterEquations2D](@ref) should be used
-    instead.
+- Comparison of two Euler equation sets in a Discontinuous Galerkin
+solver for atmospheric modelling (BRIDGE v0.9)
+Michael Baldauf and Florian Prill
 """
 struct CovariantEulerEquation{GlobalCoordinateSystem, RealT <: Real} <:
-       AbstractCovariantEulerEquations{GlobalCoordinateSystem}
+       AbstractCovariantEulerEquations{3, 3, GlobalCoordinateSystem, 6}
     gravity::RealT  # acceleration due to gravity
     rotation_rate::RealT  # rotation rate for Coriolis term 
     gamma::RealT  # 
@@ -84,12 +32,12 @@ have_nonconservative_terms(::CovariantEulerEquation) = False()
 
 # The conservative variables are the height and contravariant momentum components
 function varnames(::typeof(cons2cons), ::AbstractCovariantEulerEquations)
-    return ("rho", "rho_vcon1", "rho_vcon2", "rho_vcon3", "rho_e")
+    return ("rho", "rho_vcon1", "rho_vcon2", "rho_vcon3", "rho_e", "phi")
 end
 
 # The primitive variables are the height and contravariant velocity components
 function varnames(::typeof(cons2prim), ::AbstractCovariantEulerEquations)
-    return ("rho", "vcon1", "vcon2", "vcon3", "e")
+    return ("rho", "vcon1", "vcon2", "vcon3", "e", "phi")
 end
 
 # The change of variables contravariant2global converts the two local contravariant vector 
@@ -99,11 +47,12 @@ end
 # specifically to transformations from conservative variables.
 function varnames(::typeof(contravariant2global),
                   ::AbstractCovariantEulerEquations)
-    return ("rho", "v1", "v2", "v3", "e")
+    return ("rho", "v1", "v2", "v3", "e", "phi")
 end
 
 # Convenience functions to extract physical variables from state vector
 @inline density(u, ::AbstractEulerEquations) = u[1]
+
 @inline velocity_contravariant(u,
 ::AbstractCovariantEulerEquations) = SVector(u[2] /
                                                       u[1],
@@ -116,24 +65,45 @@ end
                                                       u[3],
                                                         u[4])
 
+@inline total_energy(u, ::AbstractEulerEquations) = u[5] / u[1]
+
+@inline energy_density(u, ::AbstractEulerEquations) = u[5]
+
+@inline potential(u, ::AbstractEulerEquations) = u[6]
+
+@inline function pressure(u, equations::AbstractCovariantEulerEquations)
+    rho = density(u, equations)
+    vcon = velocity_contravariant(u, equations)
+    Gcov = metric_covariant(aux_vars, equations)
+    ekin = 0.5f0 * dot(Gcov * vcon, vcon) * rho
+    return (equations.gamma - 1) * (total_energy(u, equations) - ekin - potential(u, equations))
+end
+
 @inline function cons2prim(u, aux_vars,
                            equations::AbstractCovariantEulerEquations)
-    h, h_vcon1, h_vcon2 = u
-    h_s = bottom_topography(aux_vars, equations)
-    return SVector(h + h_s, h_vcon1 / h, h_vcon2 / h)
+    rho, rho_vcon1, rho_vcon2, rho_vcon3, rho_e_total, phi = u
+    M = momentum_contravariant(u, equations)
+    Gcov = metric_covariant(aux_vars, equations)
+    ekin = 0.5f0 * dot(Gcov * M, M) / rho
+
+    p = (equations.gamma - 1) *
+        (rho_e_total - ekin - rho * phi)
+    return SVector(rho, rho_vcon1 / rho, rho_vcon2 / rho, rho_vcon3 / rho, p, phi)
 end
 
 @inline function prim2cons(u, aux_vars,
-                           equations::AbstractCovariantShallowWaterEquations2D)
-    H, vcon1, vcon2 = u
-    h_s = bottom_topography(aux_vars, equations)
-    h = H - h_s
-    return SVector(h, h * vcon1, h * vcon2)
+                           equations::AbstractCovariantEulerEquations)
+    rho, vcon1, vcon2, vcon3, p, phi = u
+    vcon = SVector(vcon1, vcon2, vcon3)
+    Gcov = metric_covariant(aux_vars, equations)
+    ekin = 0.5f0 * dot(Gcov * vcon, vcon) * rho
+    e_total = ekin + p / (equations.gamma - 1) + rho * phi
+    return SVector(rho, rho * vcon1, rho * vcon2, rho * vcon3, rho * e_total, phi)
 end
 
 # Entropy variables are w = (g(h+hₛ) - (v₁v¹ + v₂v²)/2, v₁, v₂)ᵀ
 @inline function cons2entropy(u, aux_vars,
-                              equations::AbstractCovariantShallowWaterEquations2D)
+                              equations::AbstractCovariantEquations)
     h = waterheight(u, equations)
     h_s = bottom_topography(aux_vars, equations)
     vcon = velocity_contravariant(u, equations)
@@ -142,184 +112,173 @@ end
                       vcov[1], vcov[2])
 end
 
+@inline function cons2entropy(u, aux_vars,
+                              equations::AbstractCovariantEulerEquations)
+    rho, rho_vcon1, rho_vcon2, rho_vcon3, rho_e_total, phi = u
+
+    # Contravariant velocity components
+    vcon = velocity_contravariant(u, equations)
+
+    # Covariant components via the metric
+    vcov = metric_covariant(aux_vars, equations) * vcon
+
+    # Kinetic energy in covariant form v_i v^i
+    v_square = dot(vcov, vcon)
+
+    # Pressure (remove gravitational potential contribution from total energy)
+    p = (equations.gamma - 1) * (rho_e_total - 0.5f0 * rho * v_square - rho * phi)
+
+    # Thermodynamic entropy and rho/p
+    s = log(p) - equations.gamma * log(rho)
+    rho_p = rho / p
+
+    # Entropy variables (covariant form)
+    w1 = (equations.gamma - s) * equations.inv_gamma_minus_one -
+         0.5f0 * rho_p * v_square
+    w2 = rho_p * vcov[1]
+    w3 = rho_p * vcov[2]
+    w4 = rho_p * vcov[3]
+    w5 = -rho_p
+
+    return SVector(w1, w2, w3, w4, w5, zero(eltype(u)))
+end
+
 # Convert contravariant momentum components to the global coordinate system
 @inline function contravariant2global(u, aux_vars,
-                                      equations::AbstractCovariantShallowWaterEquations2D)
-    h_v1, h_v2, h_v3 = basis_covariant(aux_vars, equations) *
-                       momentum_contravariant(u, equations)
-    return SVector(waterheight(u, equations), h_v1, h_v2, h_v3)
+                                      equations::AbstractCovariantEulerEquations)
+    rho_v1, rho_v2, rho_v3 = basis_covariant(aux_vars, equations) *
+                             momentum_contravariant(u, equations)
+    return SVector(u[1], rho_v1, rho_v2, rho_v3, u[5], u[6])
 end
 
 # Convert momentum components in the global coordinate system to contravariant components
 @inline function global2contravariant(u, aux_vars,
-                                      equations::AbstractCovariantShallowWaterEquations2D)
-    h_vcon1, h_vcon2 = basis_contravariant(aux_vars, equations) *
+                                      equations::AbstractCovariantEulerEquations)
+    rho_vcon1, rho_vcon2, rho_vcon3 = basis_contravariant(aux_vars, equations) *
                        SVector(u[2], u[3], u[4])
-    return SVector(u[1], h_vcon1, h_vcon2)
+    return SVector(u[1], rho_vcon1, rho_vcon2, rho_vcon3, u[5], u[6])
 end
 
-# Entropy function (total energy) given by S = (h(v₁v¹ + v₂v²) + gh² + ghhₛ)/2
+# Entropy function (total energy) given by S = rho * e_total - rho * phi - 0.5 * rho * v_i v^i
 @inline function entropy(u, aux_vars,
-                         equations::AbstractCovariantShallowWaterEquations2D)
-    h = waterheight(u, equations)
-    h_s = bottom_topography(aux_vars, equations)
+                         equations::AbstractCovariantEulerEquations)
+    rho, rho_vcon1, rho_vcon2, rho_vcon3, rho_e_total, phi = u
+
+    # Contravariant velocity components
     vcon = velocity_contravariant(u, equations)
+
+    # Covariant components via the metric
     vcov = metric_covariant(aux_vars, equations) * vcon
-    return 0.5f0 * (h * dot(vcov, vcon) + equations.gravity * h^2) +
-           equations.gravity * h * h_s
+
+    # Kinetic energy in covariant form v_i v^i
+    v_square = dot(vcov, vcon)
+
+    # Pressure (remove gravitational potential contribution from total energy)
+    p = (equations.gamma - 1) * (rho_e_total - 0.5f0 * rho * v_square - rho * phi)
+
+    # Thermodynamic entropy and rho/p
+    s = log(p) - equations.gamma * log(rho)
+    rho_p = rho / p
+
+    # Entropy variables (covariant form)
+    w1 = (equations.gamma - s) * equations.inv_gamma_minus_one -
+         0.5f0 * rho_p * v_square
+    w2 = rho_p * vcov[1]
+    w3 = rho_p * vcov[2]
+    w4 = rho_p * vcov[3]
+    w5 = -rho_p
+
+    return SVector(w1, w2, w3, w4, w5, zero(eltype(u)))
 end
 
 # Flux as a function of the state vector u, as well as the auxiliary variables aux_vars, 
 # which contain the geometric information required for the covariant form
 @inline function flux(u, aux_vars, orientation::Integer,
-                      equations::CovariantShallowWaterEquations2D)
+                      equations::CovariantEulerEquations)
     # Geometric variables
     Gcon = metric_contravariant(aux_vars, equations)
     J = area_element(aux_vars, equations)
 
     # Physical variables
-    h = waterheight(u, equations)
-    h_vcon = momentum_contravariant(u, equations)
+    rho_vcon = momentum_contravariant(u, equations)
+    vcon = velocity_contravariant(u, equations)
+    rho_e_total = energy_density(u, equations)
 
-    # Compute and store the velocity and gravitational terms
-    vcon = h_vcon[orientation] / h
-    gravitational_term = 0.5f0 * equations.gravity * h^2
+    # Compute and store the pressure and Energy momentum tensor components in the desired orientation
+    p = pressure(u, equations)
+    T = rho_vcon * vcon[orientation] + p * Gcon[:, orientation]
 
-    # Compute the momentum flux components in the desired orientation
-    momentum_flux_1 = h_vcon[1] * vcon + Gcon[1, orientation] * gravitational_term
-    momentum_flux_2 = h_vcon[2] * vcon + Gcon[2, orientation] * gravitational_term
+    return SVector(J * rho_vcon[orientation], J * T..., J * vcon[orientation] * (rho_e_total + p), zero(eltype(u)))
 
-    return SVector(J * h_vcon[orientation], J * momentum_flux_1, J * momentum_flux_2)
 end
 
 # Flux as a function of the state vector u, as well as the auxiliary variables aux_vars, 
 # which contain the geometric information required for the covariant form
 @inline function flux(u, aux_vars, normal_direction::AbstractVector,
-                      equations::CovariantShallowWaterEquations2D)
+                      equations::CovariantEulerEquations)
     # Geometric variables
     Gcon = metric_contravariant(aux_vars, equations)
     J = area_element(aux_vars, equations)
 
     # Physical variables
-    h = waterheight(u, equations)
-    h_vcon = momentum_contravariant(u, equations)
+    rho = density(u, equations)
+    rho_vcon = momentum_contravariant(u, equations)
+    rho_e_total = energy_density(u, equations)
 
-    # Compute and store the velocity and gravitational terms
-    vcon = dot(h_vcon, normal_direction) / h
-    gravitational_term = 0.5f0 * equations.gravity * h^2
+    # Compute and store the pressure and Energy momentum tensor components in the desired direction
+    vcon = dot(rho_vcon, normal_direction) / rho
+    p = pressure(u, equations)
+    T = rho_vcon * vcon + p * (Gcon * normal_direction)
 
-    # Compute the momentum flux components in the desired orientation
-    momentum_flux_1 = h_vcon[1] * vcon +
-                      dot(Gcon[1, :], normal_direction) * gravitational_term
-    momentum_flux_2 = h_vcon[2] * vcon +
-                      dot(Gcon[2, :], normal_direction) * gravitational_term
-
-    return SVector(J * dot(h_vcon, normal_direction), J * momentum_flux_1,
-                   J * momentum_flux_2)
+    return SVector(J * dot(rho_vcon, normal_direction), J * T..., J * vcon * (rho_e_total + p), zero(eltype(u)))
 end
 
 # Standard geometric and Coriolis source terms for a rotating sphere
 @inline function source_terms_geometric_coriolis(u, x, t, aux_vars,
-                                                 equations::CovariantShallowWaterEquations2D)
-    # Geometric variables
-    Gcon = metric_contravariant(aux_vars, equations)
-    Gamma1, Gamma2 = christoffel_symbols(aux_vars, equations)
-    J = area_element(aux_vars, equations)
-
-    # Physical variables
-    h = waterheight(u, equations)
-    h_vcon = momentum_contravariant(u, equations)
-    v_con = velocity_contravariant(u, equations)
-
-    # Doubly-contravariant flux tensor
-    momentum_flux = h_vcon * v_con' + 0.5f0 * equations.gravity * h^2 * Gcon
-
-    # Coriolis parameter
-    f = 2 * equations.rotation_rate * x[3] / norm(x)  # 2Ωsinθ
-
-    # Geometric source term
-    s_geo = SVector(sum(Gamma1 .* momentum_flux), sum(Gamma2 .* momentum_flux))
-
-    # Combined source terms
-    source_1 = s_geo[1] + f * J * (Gcon[1, 2] * h_vcon[1] - Gcon[1, 1] * h_vcon[2])
-    source_2 = s_geo[2] + f * J * (Gcon[2, 2] * h_vcon[1] - Gcon[2, 1] * h_vcon[2])
-
-    # Do not scale by Jacobian since apply_jacobian! is called before this
-    return SVector(zero(eltype(u)), -source_1, -source_2)
+                                                 equations::CovariantEulerEquations)
+    error("Source terms for the full 3D Euler equations are not yet implemented")
 end
 
 # Maximum wave speed along the normal direction in reference space
 @inline function max_abs_speed(u_ll, u_rr, aux_vars_ll, aux_vars_rr,
                                orientation::Integer,
-                               equations::AbstractCovariantShallowWaterEquations2D)
-    # Geometric variables
-    Gcon_ll = metric_contravariant(aux_vars_ll, equations)
-    Gcon_rr = metric_contravariant(aux_vars_rr, equations)
-
-    # Physical variables 
-    h_ll = waterheight(u_ll, equations)
-    h_rr = waterheight(u_rr, equations)
-    h_vcon_ll = momentum_contravariant(u_ll, equations)
-    h_vcon_rr = momentum_contravariant(u_rr, equations)
-
-    return max(abs(h_vcon_ll[orientation] / h_ll) +
-               sqrt(Gcon_ll[orientation, orientation] * h_ll * equations.gravity),
-               abs(h_vcon_rr[orientation] / h_rr) +
-               sqrt(Gcon_rr[orientation, orientation] * h_rr * equations.gravity))
+                               equations::CovariantEulerEquations)
+    error("max_abs_speed for the full 3D Euler equations is not yet implemented")
 end
 
 # Maximum wave speed along the normal direction in reference space
 @inline function max_abs_speed(u_ll, u_rr, aux_vars_ll, aux_vars_rr,
                                normal_direction::AbstractVector,
-                               equations::AbstractCovariantShallowWaterEquations2D)
-    # Geometric variables
-    Gcon_ll = metric_contravariant(aux_vars_ll, equations)
-    Gcon_rr = metric_contravariant(aux_vars_rr, equations)
-
-    # Physical variables 
-    h_ll = waterheight(u_ll, equations)
-    h_rr = waterheight(u_rr, equations)
-    h_vcon_ll = momentum_contravariant(u_ll, equations)
-    h_vcon_rr = momentum_contravariant(u_rr, equations)
-
-    return max(abs(dot(normal_direction, h_vcon_ll) / h_ll) +
-               sqrt(dot(normal_direction, Gcon_ll * normal_direction) * h_ll *
-                    equations.gravity),
-               abs(dot(normal_direction, h_vcon_rr) / h_rr) +
-               sqrt(dot(normal_direction, Gcon_rr * normal_direction) * h_rr *
-                    equations.gravity))
+                               equations::CovariantEulerEquations)
+    error("max_abs_speed for the full 3D Euler equations is not yet implemented")
 end
 
 # Maximum wave speeds with respect to the covariant basis
 @inline function max_abs_speeds(u, aux_vars,
-                                equations::AbstractCovariantShallowWaterEquations2D)
-    vcon = velocity_contravariant(u, equations)
-    h = waterheight(u, equations)
-    Gcon = metric_contravariant(aux_vars, equations)
-    return abs(vcon[1]) + sqrt(Gcon[1, 1] * h * equations.gravity),
-           abs(vcon[2]) + sqrt(Gcon[2, 2] * h * equations.gravity)
+                                equations::CovariantEulerEquations)
+    error("max_abs_speeds for the full 3D Euler equations is not yet implemented")
 end
 
 # If the initial velocity field is defined in Cartesian coordinates and the chosen global 
 # coordinate system is spherical, perform the appropriate conversion
 @inline function cartesian2global(u, x,
-                                  ::AbstractCovariantShallowWaterEquations2D{GlobalSphericalCoordinates})
+                                  ::CovariantEulerEquations{GlobalSphericalCoordinates})
     h_vlon, h_vlat, h_vrad = cartesian2spherical(u[2], u[3], u[4], x)
-    return SVector(u[1], h_vlon, h_vlat, h_vrad)
+    return SVector(u[1], h_vlon, h_vlat, h_vrad, u[5], u[6])
 end
 
 # If the initial velocity field is defined in spherical coordinates and the chosen global 
 # coordinate system is Cartesian, perform the appropriate conversion
 @inline function spherical2global(u, x,
-                                  ::AbstractCovariantShallowWaterEquations2D{GlobalCartesianCoordinates})
+                                  ::CovariantEulerEquations{GlobalCartesianCoordinates})
     h_vx, h_vy, h_vz = spherical2cartesian(u[2], u[3], u[4], x)
-    return SVector(u[1], h_vx, h_vy, h_vz)
+    return SVector(u[1], h_vx, h_vy, h_vz, u[5], u[6])
 end
 
 # If the initial velocity field is defined in spherical coordinates and the chosen global 
 # coordinate system is spherical, do not convert
 @inline function spherical2global(u, x,
-                                  ::AbstractCovariantShallowWaterEquations2D{GlobalSphericalCoordinates})
+                                  ::CovariantEulerEquations{GlobalSphericalCoordinates})
     return u
 end
 end # @muladd
