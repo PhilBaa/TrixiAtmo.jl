@@ -2,9 +2,9 @@
     #! format: noindnent
 
     function init_auxiliary_node_variables!(aux_values, mesh::DGMultiMesh,
-                                            equations::AbstractCovariantEquations{2, 3},
-                                            dg::DGMulti{<:Any, <:Tri},
-                                            bottom_topography)
+                                            equations::AbstractCovariantEquations{NDIMS, NDIMS_AMBIENT},
+                                            dg::DGMulti{NDIMS},
+                                            bottom_topography) where {NDIMS, NDIMS_AMBIENT}
         rd = dg.basis
         (; xyz) = mesh.md
         md = mesh.md
@@ -13,15 +13,7 @@
         # Identify the vertices corresponding to the corners of the reference element. rd.V1 is not useful,
         # since the physical nodes are projected onto the sphere and thus the corner nodes would be slightly off.
         # Instead, we identify the corner nodes by their reference coordinates and build a mask to access them directly
-        VMask = []
-        for corner in [(-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0)]
-            for j in 1:size(rd.rst[1], 1)
-                r, s = rd.rst[1][j], rd.rst[2][j]
-                if all(isapprox.((r, s), corner))
-                    push!(VMask, j)
-                end
-            end
-        end
+        VMask = compute_vertex_mask(dg)
 
         # Compute the radius of the sphere from the first element's fourth vertex, such that we can use it
         # throughout the computation. We assume that each Wedge element's last three corner vertices lie
@@ -33,49 +25,23 @@
         for element in eachelement(mesh, dg)
             # Compute corner vertices of the element
             VX, VY, VZ = map(coords -> coords[VMask, element], xyz)
-            v1, v2, v3 = map(i -> getindex.([VX, VY, VZ], i), 1:3)
+            vertices = map(i -> getindex.([VX, VY, VZ], i), length(VMask))
 
             aux_node = Vector{eltype(aux_values[1, 1])}(undef, n_aux)
 
             # Compute the auxiliary metric information at each node
             for i in 1:Trixi.nnodes(dg)
+                # Physical coordinates of the node
+                x_node = map(coords -> coords[i, element], xyz)
+
                 # Covariant basis in the desired global coordinate system as columns of a matrix
-                basis_covariant = calc_basis_covariant(v1, v2, v3,
-                                                       rd.rst[1][i], rd.rst[2][i],
+                basis_covariant = calc_basis_covariant(vertices...,
+                                                       getindex.(rd.rst[1:NDIMS], i)...,
                                                        radius,
                                                        equations.global_coordinate_system)
-
-                aux_node[1:6] = SVector(basis_covariant)
-
-                # Covariant metric tensor G := basis_covariant' * basis_covariant
-                metric_covariant = basis_covariant' * basis_covariant
-
-                # Contravariant metric tensor inv(G)
-                metric_contravariant = inv(metric_covariant)
-
-                # Contravariant basis vectors as rows of a matrix
-                basis_contravariant = metric_contravariant * basis_covariant'
-
-                aux_node[7:12] = SVector(basis_contravariant)
-                # Area element
-                aux_node[13] = sqrt(det(metric_covariant))
-
-                # Covariant metric tensor components
-                aux_node[14:16] = SVector(metric_covariant[1, 1],
-                                          metric_covariant[1, 2],
-                                          metric_covariant[2, 2])
-
-                # Contravariant metric tensor components
-                aux_node[17:19] = SVector(metric_contravariant[1, 1],
-                                          metric_contravariant[1, 2],
-                                          metric_contravariant[2, 2])
-                # Bottom topography
-                if !isnothing(bottom_topography)
-                    x_node = map(coords -> coords[i, element], xyz)
-                    aux_node[20] = bottom_topography(x_node)
-                else
-                    aux_node[20] = zero(eltype(aux_node))
-                end
+                
+                calc_aux_node!(aux_node, basis_covariant, x_node, equations, bottom_topography)
+                
                 aux_values[i, element] = SVector{n_aux}(aux_node)
             end
             # Christoffel symbols of the second kind (aux_values[21:26, :, :, element])
@@ -83,6 +49,107 @@
         end
 
         return nothing
+    end
+
+    function compute_vertex_mask(dg::DGMulti{<:Any, <:Tri})
+        rd = dg.basis
+        VMask = []
+        for corner in [(-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0)]
+            for j in 1:size(rd.rst[1], 1)
+                r, s = rd.rst[1][j], rd.rst[2][j]
+                if all(isapprox.((r, s), corner))
+                    push!(VMask, j)
+                end
+            end
+        end
+        return VMask
+    end
+
+    function compute_vertex_mask(dg::DGMulti{<:Any, <:Wedge})
+        rd = dg.basis
+        VMask = []
+        corners = [(-1.0, -1.0, -1.0), (1.0, -1.0, -1.0), (-1.0, 1.0, -1.0),
+                     (-1.0, -1.0, 1.0), (1.0, -1.0, 1.0), (-1.0, 1.0, 1.0)]
+        for corner in corners
+            for j in 1:size(rd.rst[1], 1)
+                r, s, t = rd.rst[1][j], rd.rst[2][j], rd.rst[3][j]
+                if all(isapprox.((r, s, t), corner))
+                    push!(VMask, j)
+                end
+            end
+        end
+        return VMask
+    end
+
+    function calc_aux_node!(aux_node, basis_covariant, x_node,
+                            equations::AbstractCovariantEquations{2, 3},
+                            bottom_topography)
+        aux_node[1:6] = SVector(basis_covariant)
+
+        # Covariant metric tensor G := basis_covariant' * basis_covariant
+        metric_covariant = basis_covariant' * basis_covariant
+
+        # Contravariant metric tensor inv(G)
+        metric_contravariant = inv(metric_covariant)
+
+        # Contravariant basis vectors as rows of a matrix
+        basis_contravariant = metric_contravariant * basis_covariant'
+        aux_node[7:12] = SVector(basis_contravariant)
+
+        # Area element
+        aux_node[13] = sqrt(det(metric_covariant))
+
+        # Covariant metric tensor components
+        aux_node[14:16] = SVector(metric_covariant[1, 1],
+                                  metric_covariant[1, 2],
+                                  metric_covariant[2, 2])
+
+        # Contravariant metric tensor components
+        aux_node[17:19] = SVector(metric_contravariant[1, 1],
+                                  metric_contravariant[1, 2],
+                                  metric_contravariant[2, 2])
+
+        # Bottom topography
+        if !isnothing(bottom_topography)
+            aux_node[20] = bottom_topography(x_node)
+        else
+            aux_node[20] = zero(eltype(aux_node))
+        end
+    end
+
+    function calc_aux_node!(aux_node, basis_covariant, x_node,
+                            equations::AbstractCovariantEquations{3, 3},
+                            bottom_topography)
+        aux_node[1:9] = SVector(basis_covariant)
+
+        # Covariant metric tensor G := basis_covariant' * basis_covariant
+        metric_covariant = basis_covariant' * basis_covariant
+
+        # Contravariant metric tensor inv(G)
+        metric_contravariant = inv(metric_covariant)
+
+        # Contravariant basis vectors as rows of a matrix
+        basis_contravariant = metric_contravariant * basis_covariant'
+        aux_node[10:19] = SVector(basis_contravariant)
+
+        # Area element
+        aux_node[20] = sqrt(det(metric_covariant))
+
+        # Covariant metric tensor components
+        aux_node[21:27] = SVector(metric_covariant[1, 1],
+                                  metric_covariant[1, 2],
+                                  metric_covariant[1, 3],
+                                  metric_covariant[2, 2],
+                                  metric_covariant[2, 3],
+                                  metric_covariant[3, 3])
+
+        # Contravariant metric tensor components
+        aux_node[28:30] = SVector(metric_contravariant[1, 1],
+                                  metric_contravariant[1, 2],
+                                  metric_contravariant[1, 3],
+                                  metric_contravariant[2, 2],
+                                  metric_contravariant[2, 3],
+                                  metric_contravariant[3, 3])
     end
 
     # Analytically compute the transformation matrix A, such that G = AᵀA is the 
