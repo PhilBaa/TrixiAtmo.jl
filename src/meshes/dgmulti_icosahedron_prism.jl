@@ -81,12 +81,7 @@ function DGMultiMeshPrismIcosahedron3D(dg::DGMulti{3, <:Wedge}, inner_radius, ou
         EToV[(i - 1) * num_triangles + 1:i * num_triangles, 1:3] = EToV_tri .+ (i - 1) * num_points_per_layer
         EToV[(i - 1) * num_triangles + 1:i * num_triangles, 4:6] = EToV_tri .+ i * num_points_per_layer
         Vxyz_layer = ntuple(n -> Vxyz_tri[n] .* radius_list[i + 1], NDIMS_AMBIENT)
-        @show Vxyz[1]
-        @show size(Vxyz[1])
-        @show EToV
         Vxyz = ntuple(n -> vcat(Vxyz[n], Vxyz_layer[n]), NDIMS_AMBIENT)
-        @show Vxyz[1]
-        @show size(Vxyz[1])
     end
     md = StartUpDG.MeshData(Vxyz, EToV, dg.basis)
     boundary_faces = StartUpDG.tag_boundary_faces(md, is_on_boundary)

@@ -212,6 +212,13 @@ end
                          aux_vars[4], aux_vars[5], aux_vars[6])
 end
 
+@inline function basis_covariant(aux_vars, ::AbstractCovariantEquations{3})
+    return SMatrix{3, 3}(aux_vars[1], aux_vars[2], aux_vars[3],
+                         aux_vars[4], aux_vars[5], aux_vars[6],
+                         aux_vars[7], aux_vars[8], aux_vars[9])
+end
+
+
 # Extract the contravariant basis vectors a^i from the auxiliary variables as a matrix B, 
 # where B[i, :] contains the components of the ith contravariant tangent basis vector with 
 # respect to the global (Cartesian or spherical) coordinate system
@@ -221,9 +228,19 @@ end
                          aux_vars[11], aux_vars[12])
 end
 
+@inline function basis_contravariant(aux_vars, ::AbstractCovariantEquations{3})
+    return SMatrix{3, 3}(aux_vars[10], aux_vars[11], aux_vars[12],
+                         aux_vars[13], aux_vars[14], aux_vars[15],
+                         aux_vars[16], aux_vars[17], aux_vars[18])
+end
+
 # Extract the area element J = (det(AᵀA))^(1/2) from the auxiliary variables
 @inline function area_element(aux_vars, ::AbstractCovariantEquations{2})
     return aux_vars[13]
+end
+
+@inline function area_element(aux_vars, ::AbstractCovariantEquations{3})
+    return aux_vars[19]
 end
 
 # Extract the covariant metric tensor components Gᵢⱼ from the auxiliary variables
@@ -232,10 +249,22 @@ end
                          aux_vars[15], aux_vars[16])
 end
 
+@inline function metric_covariant(aux_vars, ::AbstractCovariantEquations{3})
+    return SMatrix{3, 3}(aux_vars[14], aux_vars[15], aux_vars[16],
+                         aux_vars[15], aux_vars[17], aux_vars[18],
+                         aux_vars[16], aux_vars[18], aux_vars[19])
+end
+
 # Extract the contravariant metric tensor components Gⁱʲ from the auxiliary variables
 @inline function metric_contravariant(aux_vars, ::AbstractCovariantEquations{2})
     return SMatrix{2, 2}(aux_vars[17], aux_vars[18],
                          aux_vars[18], aux_vars[19])
+end
+
+@inline function metric_contravariant(aux_vars, ::AbstractCovariantEquations{3})
+    return SMatrix{3, 3}(aux_vars[19], aux_vars[20], aux_vars[21],
+                         aux_vars[20], aux_vars[22], aux_vars[23],
+                         aux_vars[21], aux_vars[23], aux_vars[24])
 end
 
 # Extract the bottom topography hₛ from the auxiliary variables
