@@ -77,7 +77,7 @@ export flux_nonconservative_zeros, flux_nonconservative_ec,
 
 export source_terms_lagrange_multiplier, clean_solution_lagrange_multiplier!
 
-export cons2prim_and_vorticity, contravariant2global
+export cons2prim_and_vorticity, contravariant2global, cons2prim_global
 
 export P4estMeshCubedSphere2D, P4estMeshQuadIcosahedron2D,
        DGMultiMeshTriIcosahedron2D, DGMultiMeshPrismIcosahedron3D,

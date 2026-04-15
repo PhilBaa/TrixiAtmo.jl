@@ -160,7 +160,7 @@ function initial_condition_baroclinic_instability(x, t, equations)
     r = -norm(x)
     phi = radius_earth^2 * gravitational_acceleration / r
 
-    return SVector(rho, v1, v2, v3, p, phi)
+    return SVector(rho, v1, v2, v3, p)
 end
 
 @inline function source_terms_baroclinic_instability(u, x, t,
@@ -182,7 +182,14 @@ end
     du2 -= -2 * angular_velocity * u[3]
     du3 -= 2 * angular_velocity * u[2]
 
-    return SVector(du1, du2, du3, du4, du5, zero(eltype(u)))
+    return SVector(du1, du2, du3, du4, du5)
+end
+
+# Geopotential function to pass as auxiliary_field keyword argument in constructor for 
+# SemidiscretizationHyperbolic
+@inline function geopotential_earth(x)
+    r = norm(x)
+    return EARTH_RADIUS^2 * EARTH_GRAVITATIONAL_ACCELERATION / r
 end
 
 ###############################################################################
@@ -221,7 +228,7 @@ initial_condition_transformed = transform_initial_condition(initial_condition, e
 
 # A semidiscretization collects data structures and functions for the spatial discretization
 semi = SemidiscretizationHyperbolic(mesh, equations, initial_condition_transformed, dg,
-                                    source_terms = nothing)
+                                    source_terms = nothing, auxiliary_field = geopotential_earth)
 
 
 ###############################################################################
@@ -243,7 +250,7 @@ analysis_callback = AnalysisCallback(semi, interval = 1,
 
 # The SaveSolutionCallback allows to save the solution to a file in regular intervals
 save_solution = SaveSolutionCallback(interval = 1,
-                                     solution_variables = contravariant2global)
+                                     solution_variables = cons2prim_global)
 
 # The StepsizeCallback handles the re-calculation of the maximum Δt after each time step
 stepsize_callback = StepsizeCallback(cfl = 0.7)

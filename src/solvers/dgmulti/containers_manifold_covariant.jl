@@ -4,7 +4,7 @@
     function init_auxiliary_node_variables!(aux_values, mesh::DGMultiMesh,
                                             equations::AbstractCovariantEquations{NDIMS, NDIMS_AMBIENT},
                                             dg::DGMulti{NDIMS},
-                                            bottom_topography) where {NDIMS, NDIMS_AMBIENT}
+                                            auxiliary_field) where {NDIMS, NDIMS_AMBIENT}
         rd = dg.basis
         (; xyz) = mesh.md
         md = mesh.md
@@ -40,7 +40,7 @@
                                                        radius,
                                                        equations.global_coordinate_system)
                 
-                calc_aux_node!(aux_node, basis_covariant, x_node, equations, bottom_topography)
+                calc_aux_node!(aux_node, basis_covariant, x_node, equations, auxiliary_field)
                 
                 aux_values[i, element] = SVector{n_aux}(aux_node)
             end
@@ -119,7 +119,7 @@
 
     function calc_aux_node!(aux_node, basis_covariant, x_node,
                             equations::AbstractCovariantEquations{3, 3},
-                            bottom_topography)
+                            geopotential)
         aux_node[1:9] = SVector(basis_covariant)
 
         # Covariant metric tensor G := basis_covariant' * basis_covariant
@@ -150,6 +150,13 @@
                                   metric_contravariant[2, 2],
                                   metric_contravariant[2, 3],
                                   metric_contravariant[3, 3])
+
+        # geopotential
+        if !isnothing(geopotential)
+            aux_node[32] = geopotential(x_node)
+        else
+            aux_node[32] = zero(eltype(aux_node))
+        end
     end
 
     # Analytically compute the transformation matrix A, such that G = AᵀA is the 

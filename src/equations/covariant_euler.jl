@@ -12,7 +12,7 @@ solver for atmospheric modelling (BRIDGE v0.9)
 Michael Baldauf and Florian Prill
 """
 struct CovariantEulerEquations3D{GlobalCoordinateSystem, RealT <: Real} <:
-       AbstractCovariantEquations{3, 3, GlobalCoordinateSystem, 6}
+       AbstractCovariantEquations{3, 3, GlobalCoordinateSystem, 5}
     gravity::RealT  # acceleration due to gravity
     rotation_rate::RealT  # rotation rate for Coriolis term 
     gamma::RealT  # 
@@ -32,12 +32,12 @@ have_nonconservative_terms(::CovariantEulerEquations3D) = False()
 
 # The conservative variables are the height and contravariant momentum components
 function varnames(::typeof(cons2cons), ::CovariantEulerEquations3D)
-    return ("rho", "rho_vcon1", "rho_vcon2", "rho_vcon3", "rho_e", "phi")
+    return ("rho", "rho_vcon1", "rho_vcon2", "rho_vcon3", "rho_e")
 end
 
 # The primitive variables are the height and contravariant velocity components
 function varnames(::typeof(cons2prim), ::CovariantEulerEquations3D)
-    return ("rho", "vcon1", "vcon2", "vcon3", "e", "phi")
+    return ("rho", "vcon1", "vcon2", "vcon3", "e")
 end
 
 # The change of variables contravariant2global converts the two local contravariant vector 
@@ -47,7 +47,7 @@ end
 # specifically to transformations from conservative variables.
 function varnames(::typeof(contravariant2global),
                   ::CovariantEulerEquations3D)
-    return ("rho", "v1", "v2", "v3", "e", "phi")
+    return ("rho", "v1", "v2", "v3", "e")
 end
 
 # Convenience functions to extract physical variables from state vector
@@ -69,49 +69,38 @@ end
 
 @inline energy_density(u, ::CovariantEulerEquations3D) = u[5]
 
-@inline potential(u, ::CovariantEulerEquations3D) = u[6]
-
 @inline function pressure(u, aux_vars, equations::CovariantEulerEquations3D)
     rho = density(u, equations)
     vcon = velocity_contravariant(u, equations)
     Gcov = metric_covariant(aux_vars, equations)
     ekin = 0.5f0 * dot(Gcov * vcon, vcon) * rho
-    return (equations.gamma - 1) * (total_energy(u, equations) - ekin - rho * potential(u, equations))
+    phi = geopotential(aux_vars, equations)
+    return (equations.gamma - 1) * (total_energy(u, equations) - ekin - rho * phi)
 end
 
 @inline function cons2prim(u, aux_vars,
                            equations::CovariantEulerEquations3D)
     rho = density(u, equations)
     vcon1, vcon2, vcon3 = velocity_contravariant(u, equations)
-    phi = potential(u, equations)
+    phi = geopotential(aux_vars, equations)
     p = pressure(u, aux_vars, equations)
     return SVector(rho, vcon1, vcon2, vcon3, p, phi)
 end
 
 @inline function prim2cons(u, aux_vars,
                            equations::CovariantEulerEquations3D)
-    rho, vcon1, vcon2, vcon3, p, phi = u
+    rho, vcon1, vcon2, vcon3, p = u
     vcon = SVector(vcon1, vcon2, vcon3)
     Gcov = metric_covariant(aux_vars, equations)
     ekin = 0.5f0 * dot(Gcov * vcon, vcon) * rho
+    phi = geopotential(aux_vars, equations)
     e_total = ekin + p / (equations.gamma - 1) + rho * phi
-    return SVector(rho, rho * vcon1, rho * vcon2, rho * vcon3, rho * e_total, phi)
-end
-
-# Entropy variables are w = (g(h+hₛ) - (v₁v¹ + v₂v²)/2, v₁, v₂)ᵀ
-@inline function cons2entropy(u, aux_vars,
-                              equations::AbstractCovariantEquations)
-    h = waterheight(u, equations)
-    h_s = bottom_topography(aux_vars, equations)
-    vcon = velocity_contravariant(u, equations)
-    vcov = metric_covariant(aux_vars, equations) * vcon
-    return SVector{3}(equations.gravity * (h + h_s) - 0.5f0 * dot(vcov, vcon),
-                      vcov[1], vcov[2])
+    return SVector(rho, rho * vcon1, rho * vcon2, rho * vcon3, rho * e_total)
 end
 
 @inline function cons2entropy(u, aux_vars,
                               equations::CovariantEulerEquations3D)
-    rho, rho_vcon1, rho_vcon2, rho_vcon3, rho_e_total, phi = u
+    rho, rho_vcon1, rho_vcon2, rho_vcon3, rho_e_total = u
 
     # Contravariant velocity components
     vcon = velocity_contravariant(u, equations)
@@ -137,7 +126,7 @@ end
     w4 = rho_p * vcov[3]
     w5 = -rho_p
 
-    return SVector(w1, w2, w3, w4, w5, zero(eltype(u)))
+    return SVector(w1, w2, w3, w4, w5)
 end
 
 # Convert contravariant momentum components to the global coordinate system
@@ -145,7 +134,7 @@ end
                                       equations::CovariantEulerEquations3D)
     rho_v1, rho_v2, rho_v3 = basis_covariant(aux_vars, equations) *
                              momentum_contravariant(u, equations)
-    return SVector(u[1], rho_v1, rho_v2, rho_v3, u[5], u[6])
+    return SVector(u[1], rho_v1, rho_v2, rho_v3, u[5])
 end
 
 # Convert momentum components in the global coordinate system to contravariant components
@@ -153,13 +142,13 @@ end
                                       equations::CovariantEulerEquations3D)
     rho_vcon1, rho_vcon2, rho_vcon3 = basis_contravariant(aux_vars, equations) *
                        SVector(u[2], u[3], u[4])
-    return SVector(u[1], rho_vcon1, rho_vcon2, rho_vcon3, u[5], u[6])
+    return SVector(u[1], rho_vcon1, rho_vcon2, rho_vcon3, u[5])
 end
 
 # Entropy function (total energy) given by S = rho * e_total - rho * phi - 0.5 * rho * v_i v^i
 @inline function entropy(u, aux_vars,
                          equations::CovariantEulerEquations3D)
-    rho, rho_vcon1, rho_vcon2, rho_vcon3, rho_e_total, phi = u
+    rho, rho_vcon1, rho_vcon2, rho_vcon3, rho_e_total = u
 
     # Contravariant velocity components
     vcon = velocity_contravariant(u, equations)
@@ -185,7 +174,7 @@ end
     w4 = rho_p * vcov[3]
     w5 = -rho_p
 
-    return SVector(w1, w2, w3, w4, w5, zero(eltype(u)))
+    return SVector(w1, w2, w3, w4, w5)
 end
 
 # Flux as a function of the state vector u, as well as the auxiliary variables aux_vars, 
@@ -205,7 +194,7 @@ end
     p = pressure(u, aux_vars, equations)
     T = rho_vcon * vcon[orientation] + p * Gcon[:, orientation]
 
-    return SVector(J * rho_vcon[orientation], J * T..., J * vcon[orientation] * (rho_e_total + p), zero(eltype(u)))
+    return SVector(J * rho_vcon[orientation], J * T..., J * vcon[orientation] * (rho_e_total + p))
 
 end
 
@@ -227,7 +216,7 @@ end
     p = pressure(u, aux_vars, equations)
     T = rho_vcon * vcon + p * (Gcon * normal_direction)
 
-    return SVector(J * dot(rho_vcon, normal_direction), J * T..., J * vcon * (rho_e_total + p), zero(eltype(u)))
+    return SVector(J * dot(rho_vcon, normal_direction), J * T..., J * vcon * (rho_e_total + p))
 end
 
 # Standard geometric and Coriolis source terms for a rotating sphere
@@ -254,18 +243,11 @@ end
 # Maximum wave speeds with respect to the covariant basis
 @inline function max_abs_speeds(u, aux_vars,
                                 equations::CovariantEulerEquations3D)
-    rho, vcon1, vcon2, vcon3, p, phi = cons2prim(u, aux_vars, equations)
-    @show rho, p
+    rho, v1, v2, v3, p = cons2prim_global(u, aux_vars, equations)
+    @show p, rho
     c = sqrt(equations.gamma * p / rho)
 
-    # TODO: Using the contravariant speed in max_dt was not a good idea.
-    base_covariant = basis_covariant(aux_vars, equations)
-
-    c1 = sum(base_covariant[:, 1]) * c
-    c2 = sum(base_covariant[:, 2]) * c
-    c3 = sum(base_covariant[:, 3]) * c
-    @show c1
-    return abs(vcon1) + c1, abs(vcon2) + c2, abs(vcon3) + c3
+    return abs(v1) + c, abs(v2) + c, abs(v3) + c
 end
 
 # If the initial velocity field is defined in Cartesian coordinates and the chosen global 
@@ -273,7 +255,7 @@ end
 @inline function cartesian2global(u, x,
                                   ::CovariantEulerEquations3D{GlobalSphericalCoordinates})
     h_vlon, h_vlat, h_vrad = cartesian2spherical(u[2], u[3], u[4], x)
-    return SVector(u[1], h_vlon, h_vlat, h_vrad, u[5], u[6])
+    return SVector(u[1], h_vlon, h_vlat, h_vrad, u[5])
 end
 
 # If the initial velocity field is defined in spherical coordinates and the chosen global 
@@ -281,7 +263,7 @@ end
 @inline function spherical2global(u, x,
                                   ::CovariantEulerEquations3D{GlobalCartesianCoordinates})
     h_vx, h_vy, h_vz = spherical2cartesian(u[2], u[3], u[4], x)
-    return SVector(u[1], h_vx, h_vy, h_vz, u[5], u[6])
+    return SVector(u[1], h_vx, h_vy, h_vz, u[5])
 end
 
 # If the initial velocity field is defined in spherical coordinates and the chosen global 

@@ -117,10 +117,21 @@ end
     return (dv2dxi1 - dv1dxi2) / area_element(aux_node, equations)
 end
 
+@inline function cons2prim_global(u, aux_vars, equations::AbstractCovariantEquations{3})
+    rho, vcon1, vcon2, vcon3, p= cons2prim(u, aux_vars, equations)
+    _, rho_v1, rho_v2, rho_v3, _= contravariant2global(u, aux_vars, equations)
+    return SVector(rho, rho_v1 / rho, rho_v2 / rho, rho_v3 / rho, p)
+end
+
 # Variable names for cons2prim_and_vorticity, chosen to match those from 
 # ShallowWaterEquations3D
 function Trixi.varnames(::typeof(cons2prim_and_vorticity),
                         equations::AbstractCovariantShallowWaterEquations2D)
     return ("H", "v1", "v2", "v3", "b", "vorticity")
+end
+
+function Trixi.varnames(::typeof(cons2prim_global),
+                        equations::CovariantEulerEquations3D)
+    return ("rho", "v1", "v2", "v3", "p")
 end
 end # @muladd

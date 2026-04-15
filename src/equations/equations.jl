@@ -239,8 +239,13 @@ end
     return aux_vars[13]
 end
 
-@inline function area_element(aux_vars, ::AbstractCovariantEquations{3})
+@inline function volume_element(aux_vars, ::AbstractCovariantEquations{3})
     return aux_vars[19]
+end
+
+# Fallback to area element if equations are 2D
+@inline function volume_element(aux_vars, equations::AbstractCovariantEquations{2})
+    return area_element(aux_vars, equations)
 end
 
 # Extract the covariant metric tensor components Gᵢⱼ from the auxiliary variables
@@ -250,9 +255,9 @@ end
 end
 
 @inline function metric_covariant(aux_vars, ::AbstractCovariantEquations{3})
-    return SMatrix{3, 3}(aux_vars[14], aux_vars[15], aux_vars[16],
-                         aux_vars[15], aux_vars[17], aux_vars[18],
-                         aux_vars[16], aux_vars[18], aux_vars[19])
+    return SMatrix{3, 3}(aux_vars[20], aux_vars[21], aux_vars[22],
+                         aux_vars[21], aux_vars[23], aux_vars[24],
+                         aux_vars[22], aux_vars[24], aux_vars[25])
 end
 
 # Extract the contravariant metric tensor components Gⁱʲ from the auxiliary variables
@@ -262,14 +267,19 @@ end
 end
 
 @inline function metric_contravariant(aux_vars, ::AbstractCovariantEquations{3})
-    return SMatrix{3, 3}(aux_vars[19], aux_vars[20], aux_vars[21],
-                         aux_vars[20], aux_vars[22], aux_vars[23],
-                         aux_vars[21], aux_vars[23], aux_vars[24])
+    return SMatrix{3, 3}(aux_vars[26], aux_vars[27], aux_vars[28],
+                         aux_vars[27], aux_vars[29], aux_vars[30],
+                         aux_vars[28], aux_vars[30], aux_vars[31])
 end
 
 # Extract the bottom topography hₛ from the auxiliary variables
 @inline function bottom_topography(aux_vars, ::AbstractCovariantEquations{2})
     return aux_vars[20]
+end
+
+# Extract the geopotential from the auxiliary variables
+@inline function geopotential(aux_vars, ::AbstractCovariantEquations{3})
+    return aux_vars[32]
 end
 
 # Extract the Christoffel symbols of the second kind Γⁱⱼₖ from the auxiliary variables
