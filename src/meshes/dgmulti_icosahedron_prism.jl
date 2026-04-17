@@ -84,6 +84,52 @@ function DGMultiMeshPrismIcosahedron3D(dg::DGMulti{3, <:Wedge}, inner_radius, ou
         Vxyz = ntuple(n -> vcat(Vxyz[n], Vxyz_layer[n]), NDIMS_AMBIENT)
     end
     md = StartUpDG.MeshData(Vxyz, EToV, dg.basis)
+    project_onto_sphere!(md, dg)
     boundary_faces = StartUpDG.tag_boundary_faces(md, is_on_boundary)
     return DGMultiMesh(dg, Trixi.GeometricTermsType(Trixi.Curved(), dg), md, boundary_faces)
+end
+
+function project_onto_sphere!(md::MeshData, dg::DGMulti{NDIMS, <:Wedge}) where {NDIMS}
+    rd = dg.basis
+    (; xyz, xyzq, xyzf) = md
+    for e in 1:size(md.xyz[1], 2)
+        VX, VY, VZ = map(coords -> transpose(coords[:, e]) / rd.V1', md.xyz)
+        vertices = ntuple(n -> [VX[n], VY[n], VZ[n]], 6)
+        inner_radius = norm(vertices[1])
+        outer_radius = norm(vertices[4])
+        for j in 1:size(rd.rst[1], 1)
+            t = rd.rst[3][j]
+            radius = (1 - t) / 2 * inner_radius + (1 + t) / 2 * outer_radius
+            x_node = ntuple(n -> xyz[n][j, e], NDIMS)
+            x_node = radius / norm(x_node) .* x_node
+
+            for n in 1:3
+                xyz[n][j, e] = x_node[n]
+            end
+        end
+
+        for j in 1:size(rd.rstq[1], 1)
+            r, s, t = rd.rstq[1][j], rd.rstq[2][j], rd.rstq[3][j]
+            radius = (1 - t) / 2 * inner_radius + (1 + t) / 2 * outer_radius
+            x_node = ntuple(n -> xyzq[n][j, e], NDIMS)
+            x_node = radius / norm(x_node) .* x_node
+
+            for n in 1:3
+                xyzq[n][j, e] = x_node[n]
+            end
+        end
+
+        for j in 1:size(rd.rstf[1], 1)
+            r, s, t = rd.rstf[1][j], rd.rstf[2][j], rd.rstf[3][j]
+            radius = (1 - t) / 2 * inner_radius + (1 + t) / 2 * outer_radius
+            x_node = ntuple(n -> xyzf[n][j, e], NDIMS)
+            x_node = radius / norm(x_node) .* x_node
+
+            for n in 1:3
+                xyzf[n][j, e] = x_node[n]
+            end
+        end
+    end
+    md = setproperties(md, xyz = xyz, xyzq = xyzq, xyzf = xyzf)
+    return md
 end

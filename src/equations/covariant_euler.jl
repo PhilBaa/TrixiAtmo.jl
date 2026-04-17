@@ -183,7 +183,7 @@ end
                       equations::CovariantEulerEquations3D)
     # Geometric variables
     Gcon = metric_contravariant(aux_vars, equations)
-    J = area_element(aux_vars, equations)
+    J = volume_element(aux_vars, equations)
 
     # Physical variables
     rho_vcon = momentum_contravariant(u, equations)
@@ -204,7 +204,7 @@ end
                       equations::CovariantEulerEquations3D)
     # Geometric variables
     Gcon = metric_contravariant(aux_vars, equations)
-    J = area_element(aux_vars, equations)
+    J = volume_element(aux_vars, equations)
 
     # Physical variables
     rho = density(u, equations)
@@ -236,15 +236,27 @@ end
 @inline function max_abs_speed(u_ll, u_rr, aux_vars_ll, aux_vars_rr,
                                normal_direction::AbstractVector,
                                equations::CovariantEulerEquations3D)
-    
-    error("max_abs_speed for the full 3D Euler equations is not yet implemented")
+    rho_ll, v1_ll, v2_ll, v3_ll, p_ll = cons2prim_global(u_ll, aux_vars_ll, equations)
+    rho_rr, v1_rr, v2_rr, v3_rr, p_rr = cons2prim_global(u_rr, aux_vars_rr, equations)
+
+    # Calcualte the normal velocities and sound speeds
+    v_ll = (v1_ll * normal_direction[1] 
+            + v2_ll * normal_direction[2] 
+            + v3_ll * normal_direction[3])
+    v_rr = (v1_rr * normal_direction[1]
+            + v2_rr * normal_direction[2]
+            + v3_rr * normal_direction[3])
+    c_ll = sqrt(equations.gamma * p_ll / rho_ll)
+    c_rr = sqrt(equations.gamma * p_rr / rho_rr)
+
+    norm_ = norm(normal_direction)
+    return max(abs(v_ll) + c_ll * norm_, abs(v_rr) + c_rr * norm_)
 end
 
 # Maximum wave speeds with respect to the covariant basis
 @inline function max_abs_speeds(u, aux_vars,
                                 equations::CovariantEulerEquations3D)
     rho, v1, v2, v3, p = cons2prim_global(u, aux_vars, equations)
-    @show p, rho
     c = sqrt(equations.gamma * p / rho)
 
     return abs(v1) + c, abs(v2) + c, abs(v3) + c

@@ -146,19 +146,10 @@ function initial_condition_baroclinic_instability(x, t, equations)
     v1 = -sin(lon) * u - sin(lat) * cos(lon) * v
     v2 = cos(lon) * u - sin(lat) * sin(lon) * v
     v3 = cos(lat) * v
-    radius_earth = 6.371229e6  # a
-    gravitational_acceleration = 9.81    # g
 
-    r = norm(x)
-    # Make sure that r is not smaller than radius_earth
-    z = max(r - radius_earth, 0)
-    if z > 0
-        r = norm(x)
-    else
-        r = -(2 * radius_earth^3) / (x[1]^2 + x[2]^2 + x[3]^2)
+    if p < 0
+        error()
     end
-    r = -norm(x)
-    phi = radius_earth^2 * gravitational_acceleration / r
 
     return SVector(rho, v1, v2, v3, p)
 end
@@ -210,7 +201,7 @@ equations = CovariantEulerEquations3D(EARTH_GRAVITATIONAL_ACCELERATION,
 polydeg = (2, 2)
 
 dg = DGMulti(element_type = Wedge(),
-             approximation_type = Polynomial(),
+             approximation_type = SBP(),
              surface_flux = flux_lax_friedrichs,
              polydeg = polydeg)
 

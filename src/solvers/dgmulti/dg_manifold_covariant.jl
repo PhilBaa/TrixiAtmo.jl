@@ -67,7 +67,7 @@ function Trixi.calc_volume_integral!(du, u,
             for j in Trixi.eachindex(flux_values)
                 u_node = u_values[j, e]
                 aux_node = aux_quad_values[j, e]
-                area_elem = area_element(aux_node, equations)
+                area_elem = volume_element(aux_node, equations)
                 flux_values[j] = flux(u_node, aux_node, i, equations)
             end
 
