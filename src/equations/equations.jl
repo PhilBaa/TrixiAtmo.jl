@@ -325,7 +325,7 @@ end
                                                               equations::AbstractCovariantEquations)
     λ = dissipation.max_abs_speed(u_ll, u_rr, aux_vars_ll, aux_vars_rr,
                                   orientation_or_normal_direction, equations)
-    return -0.5f0 * area_element(aux_vars_ll, equations) * λ * (u_rr - u_ll)
+    return -0.5f0 * volume_element(aux_vars_ll, equations) * λ * (u_rr - u_ll)
 end
 
 # Convert a vector from a global spherical to Cartesian basis representation. A tangent 

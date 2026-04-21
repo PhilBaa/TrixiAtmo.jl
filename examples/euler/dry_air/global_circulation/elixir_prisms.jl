@@ -110,7 +110,6 @@ function perturbation_stream_function(lon, lat, z)
 
     v_perturbation = factor * cos(perturbation_lat) * sin(lon - perturbation_lon) /
                      sin(great_circle_distance_by_a)
-    return 0.0, 0.0
     return u_perturbation, v_perturbation
 end
 
@@ -146,10 +145,6 @@ function initial_condition_baroclinic_instability(x, t, equations)
     v1 = -sin(lon) * u - sin(lat) * cos(lon) * v
     v2 = cos(lon) * u - sin(lat) * sin(lon) * v
     v3 = cos(lat) * v
-
-    if p < 0
-        error()
-    end
 
     return SVector(rho, v1, v2, v3, p)
 end
@@ -202,13 +197,13 @@ polydeg = (2, 2)
 
 dg = DGMulti(element_type = Wedge(),
              approximation_type = SBP(),
-             surface_flux = flux_lax_friedrichs,
-             polydeg = polydeg)
+             surface_flux = flux_central,
+             polydeg = polydeg; Nplot = 3)
 
 ###############################################################################
 # Build mesh.
 
-horizontal_initial_refinement = 3
+horizontal_initial_refinement = 4
 vertical_layers = 3
 
 mesh = DGMultiMeshPrismIcosahedron3D(dg, EARTH_RADIUS, EARTH_RADIUS + 30000;

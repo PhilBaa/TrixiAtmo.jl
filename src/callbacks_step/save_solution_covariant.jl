@@ -118,9 +118,9 @@ end
 end
 
 @inline function cons2prim_global(u, aux_vars, equations::AbstractCovariantEquations{3})
-    rho, vcon1, vcon2, vcon3, p= cons2prim(u, aux_vars, equations)
-    _, rho_v1, rho_v2, rho_v3, _= contravariant2global(u, aux_vars, equations)
-    return SVector(rho, rho_v1 / rho, rho_v2 / rho, rho_v3 / rho, p)
+    rho, vcon1, vcon2, vcon3, p = cons2prim(u, aux_vars, equations)
+    _, v1, v2, v3, _ = contravariant2global(u, aux_vars, equations)
+    return SVector(rho, v1, v2, v3, p)
 end
 
 # Variable names for cons2prim_and_vorticity, chosen to match those from 

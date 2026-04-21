@@ -29,7 +29,7 @@ function Trixi.create_cache(mesh::DGMultiMesh{NDIMS}, equations::AbstractCovaria
     auxiliary_container = (; aux_values, aux_quad_values, aux_face_values)
 
     if typeof(rd.approximation_type) <:
-       Union{SBP, Trixi.AbstractNonperiodicDerivativeOperator}
+       Union{SBP, TensorProductWedgeSBP, Trixi.AbstractNonperiodicDerivativeOperator}
         lift_scalings = rd.wf ./ rd.wq[rd.Fmask] # lift scalings for diag-norm SBP operators
     else
         lift_scalings = nothing

@@ -69,22 +69,27 @@ end
 
 @inline energy_density(u, ::CovariantEulerEquations3D) = u[5]
 
-@inline function pressure(u, aux_vars, equations::CovariantEulerEquations3D)
+@inline function kinetic_energy(u, aux_vars, equations::CovariantEulerEquations3D)
     rho = density(u, equations)
     vcon = velocity_contravariant(u, equations)
     Gcov = metric_covariant(aux_vars, equations)
-    ekin = 0.5f0 * dot(Gcov * vcon, vcon) * rho
+    return 0.5f0 * dot(Gcov * vcon, vcon) * rho
+end
+
+@inline function pressure(u, aux_vars, equations::CovariantEulerEquations3D)
+    rho = density(u, equations)
+    rho_e_total = energy_density(u, equations)
+    ekin = kinetic_energy(u, aux_vars, equations)
     phi = geopotential(aux_vars, equations)
-    return (equations.gamma - 1) * (total_energy(u, equations) - ekin - rho * phi)
+    return (equations.gamma - 1) * (rho_e_total - ekin - rho * phi)
 end
 
 @inline function cons2prim(u, aux_vars,
                            equations::CovariantEulerEquations3D)
     rho = density(u, equations)
-    vcon1, vcon2, vcon3 = velocity_contravariant(u, equations)
-    phi = geopotential(aux_vars, equations)
+    vcon = velocity_contravariant(u, equations)
     p = pressure(u, aux_vars, equations)
-    return SVector(rho, vcon1, vcon2, vcon3, p, phi)
+    return SVector(rho, vcon[1], vcon[2], vcon[3], p)
 end
 
 @inline function prim2cons(u, aux_vars,
@@ -94,8 +99,8 @@ end
     Gcov = metric_covariant(aux_vars, equations)
     ekin = 0.5f0 * dot(Gcov * vcon, vcon) * rho
     phi = geopotential(aux_vars, equations)
-    e_total = ekin + p / (equations.gamma - 1) + rho * phi
-    return SVector(rho, rho * vcon1, rho * vcon2, rho * vcon3, rho * e_total)
+    rho_e_total = p * equations.inv_gamma_minus_one + ekin + rho * phi
+    return SVector(rho, rho * vcon1, rho * vcon2, rho * vcon3, rho_e_total)
 end
 
 @inline function cons2entropy(u, aux_vars,
@@ -132,17 +137,17 @@ end
 # Convert contravariant momentum components to the global coordinate system
 @inline function contravariant2global(u, aux_vars,
                                       equations::CovariantEulerEquations3D)
-    rho_v1, rho_v2, rho_v3 = basis_covariant(aux_vars, equations) *
-                             momentum_contravariant(u, equations)
-    return SVector(u[1], rho_v1, rho_v2, rho_v3, u[5])
+    v1, v2, v3 = basis_covariant(aux_vars, equations) *
+                             SVector(u[2], u[3], u[4])
+    return SVector(u[1], v1, v2, v3, u[5])
 end
 
 # Convert momentum components in the global coordinate system to contravariant components
 @inline function global2contravariant(u, aux_vars,
                                       equations::CovariantEulerEquations3D)
-    rho_vcon1, rho_vcon2, rho_vcon3 = basis_contravariant(aux_vars, equations) *
-                       SVector(u[2], u[3], u[4])
-    return SVector(u[1], rho_vcon1, rho_vcon2, rho_vcon3, u[5])
+    vcon1, vcon2, vcon3 = basis_contravariant(aux_vars, equations) *
+                                      SVector(u[2], u[3], u[4])
+    return SVector(u[1], vcon1, vcon2, vcon3, u[5])
 end
 
 # Entropy function (total energy) given by S = rho * e_total - rho * phi - 0.5 * rho * v_i v^i
@@ -236,8 +241,8 @@ end
 @inline function max_abs_speed(u_ll, u_rr, aux_vars_ll, aux_vars_rr,
                                normal_direction::AbstractVector,
                                equations::CovariantEulerEquations3D)
-    rho_ll, v1_ll, v2_ll, v3_ll, p_ll = cons2prim_global(u_ll, aux_vars_ll, equations)
-    rho_rr, v1_rr, v2_rr, v3_rr, p_rr = cons2prim_global(u_rr, aux_vars_rr, equations)
+    rho_ll, v1_ll, v2_ll, v3_ll, p_ll = cons2prim(u_ll, aux_vars_ll, equations)
+    rho_rr, v1_rr, v2_rr, v3_rr, p_rr = cons2prim(u_rr, aux_vars_rr, equations)
 
     # Calcualte the normal velocities and sound speeds
     v_ll = (v1_ll * normal_direction[1] 
@@ -256,7 +261,7 @@ end
 # Maximum wave speeds with respect to the covariant basis
 @inline function max_abs_speeds(u, aux_vars,
                                 equations::CovariantEulerEquations3D)
-    rho, v1, v2, v3, p = cons2prim_global(u, aux_vars, equations)
+    rho, v1, v2, v3, p = cons2prim(u, aux_vars, equations)
     c = sqrt(equations.gamma * p / rho)
 
     return abs(v1) + c, abs(v2) + c, abs(v3) + c
