@@ -251,20 +251,19 @@ end
     v_rr = (v1_rr * normal_direction[1]
             + v2_rr * normal_direction[2]
             + v3_rr * normal_direction[3])
-    c_ll = sqrt(equations.gamma * p_ll / rho_ll)
-    c_rr = sqrt(equations.gamma * p_rr / rho_rr)
-
-    norm_ = norm(normal_direction)
-    return max(abs(v_ll) + c_ll * norm_, abs(v_rr) + c_rr * norm_)
+    error("max_abs_speed for the full 3D Euler equations is not yet implemented")
 end
 
 # Maximum wave speeds with respect to the covariant basis
 @inline function max_abs_speeds(u, aux_vars,
                                 equations::CovariantEulerEquations3D)
-    rho, v1, v2, v3, p = cons2prim(u, aux_vars, equations)
-    c = sqrt(equations.gamma * p / rho)
+    rho, vcon1, vcon2, vcon3, p = cons2prim(u, aux_vars, equations)
+    Gcon = metric_contravariant(aux_vars, equations)
+    c1 = sqrt(equations.gamma * p / rho * Gcon[1, 1])
+    c2 = sqrt(equations.gamma * p / rho * Gcon[2, 2])
+    c3 = sqrt(equations.gamma * p / rho * Gcon[3, 3])
 
-    return abs(v1) + c, abs(v2) + c, abs(v3) + c
+    return abs(vcon1) + c1, abs(vcon2) + c2, abs(vcon3) + c3
 end
 
 # If the initial velocity field is defined in Cartesian coordinates and the chosen global 

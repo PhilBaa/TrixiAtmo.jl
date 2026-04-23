@@ -80,7 +80,6 @@ function Trixi.max_dt(u, t, mesh::DGMultiMesh,
 
     dt_min = Inf
     for e in eachelement(mesh, dg, cache)
-        h_e = StartUpDG.estimate_h(e, rd, md)
         max_speeds = ntuple(_ -> nextfloat(zero(t)), NDIMS)
         for i in 1:nnodes(dg)
             u_node = u[i, e]
@@ -88,7 +87,7 @@ function Trixi.max_dt(u, t, mesh::DGMultiMesh,
             lambda_i = Trixi.max_abs_speeds(u_node, aux_node, equations)
             max_speeds = max.(max_speeds, lambda_i)
         end
-        dt_min = min(dt_min, h_e / sum(max_speeds))
+        dt_min = min(dt_min, 1 / sum(max_speeds))
     end
 
     # This mimics `max_dt` for `TreeMesh`, except that `nnodes(dg)` is replaced by
